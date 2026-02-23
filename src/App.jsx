@@ -5,17 +5,17 @@ import PrivateChat from './PrivateChat.jsx';
 
 function App() {
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
-      <Sidebar />
-      <div style={{ flex: 1 }}>
-        <BrowserRouter>
+    <BrowserRouter>
+      <div style={{ display: 'flex', height: '100vh' }}>
+        <Sidebar />
+        <div style={{ flex: 1 }}>
           <Routes>
             <Route path="/chat/:chatId" element={<PrivateChat />} />
             <Route path="/" element={<div style={{ padding: '20px' }}>Select a chat or start a new one.</div>} />
           </Routes>
-        </BrowserRouter>
+        </div>
       </div>
-    </div>
+    </BrowserRouter>
   );
 }
 
