@@ -2,7 +2,7 @@
 36/workspaces/i-msgnet/src/Sidebar.jsx1771876515784602994 0
 32/workspaces/i-msgnet/src/App.jsx1771876515784602994 0
 33/workspaces/i-msgnet/src/main.jsx1771876515784602994 0
-38/workspaces/i-msgnet/package-lock.json1771876563133602582 0
+38/workspaces/i-msgnet/package-lock.json1771879561457576473 0
 31/workspaces/i-msgnet/.gitignore1771876515784602994 0
 33/workspaces/i-msgnet/package.json1771876515784602994 0
 74/workspaces/i-msgnet/node_modules/node-gyp-build-optional-packages/LICENSE1771876549617602700 0
@@ -1290,7 +1290,7 @@
 65/workspaces/i-msgnet/node_modules/caniuse-lite/data/regions/MZ.js1771876558404602623 0
 55/workspaces/i-msgnet/node_modules/node-releases/LICENSE1771876549927602697 0
 74/workspaces/i-msgnet/node_modules/caniuse-lite/data/features/ogg-vorbis.js1771876558507602622 0
-52/workspaces/i-msgnet/node_modules/.package-lock.json1771876563188602582 0
+52/workspaces/i-msgnet/node_modules/.package-lock.json1771879561498576472 0
 68/workspaces/i-msgnet/node_modules/@parcel/logger/test/Logger.test.js1771876552808602672 0
 94/workspaces/i-msgnet/node_modules/@parcel/core/test/fixtures/config-plugin-not-found/.parcelrc1771876553176602669 0
 82/workspaces/i-msgnet/node_modules/caniuse-lite/data/features/css-widows-orphans.js1771876556279602642 0
