@@ -112,6 +112,44 @@ function PrivateChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [decryptedMessages]);
 
+
+// Polling for new messages from backend
+useEffect(() => {
+  const pollMessages = async () => {
+    try {
+      const res = await fetch(`https://i-msgnet-backend-production.up.railway.app/api/messages/${chatId}`);
+      if (!res.ok) {
+        console.warn('Poll status:', res.status);
+        return;
+      }
+      const remoteMsgs = await res.json();
+
+      // Deduplicate: only add if encrypted string not already local
+      const localEncrypted = new Set(messages.map(m => m.encrypted));
+      const incoming = remoteMsgs.filter(rm => !localEncrypted.has(rm.encrypted));
+
+      if (incoming.length > 0) {
+        const newOnes = incoming.map(rm => ({
+          encrypted: rm.encrypted,
+          sender: 'them' // can be 'me' later if we add sender field
+        }));
+        const updated = [...messages, ...newOnes];
+        setMessages(updated);
+        localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
+      }
+    } catch (err) {
+      console.error('Polling failed:', err);
+    }
+  };
+
+  // Run immediately + every 8 seconds
+  pollMessages();
+  const interval = setInterval(pollMessages, 8000);
+  return () => clearInterval(interval);
+}, [chatId, messages]); // Re-poll after local changes
+
+  
+  
   const copyKey = async () => {
     if (!cryptoKey) return;
     const raw = await crypto.subtle.exportKey('raw', cryptoKey);
