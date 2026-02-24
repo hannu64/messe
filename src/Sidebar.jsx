@@ -35,11 +35,14 @@ function Sidebar() {
       <button onClick={addChat} style={{ width: '100%' }}>+ Add Chat</button> {/* Text icon fix: using "+" text */}
       <ul style={{ listStyle: 'none', padding: 0 }}>
         {chats.map((chat) => (
+
           <li key={chat.id}>
-            <button onClick={() => navigate(`/chat/${chat.id}`)} style={{ width: '100%', textAlign: 'left' }}>
+            <button onClick={() => navigate(`/chat/${chat.id}`)} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}>
               {chat.name}
+              {localStorage.getItem(`key_${chat.id}`) && <span style={{ color: 'green', fontSize: '0.8em' }}>🔒</span>}
             </button>
           </li>
+      
         ))}
       </ul>
     </div>
