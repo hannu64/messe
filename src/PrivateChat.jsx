@@ -1,7 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 
-// ... (keep generateKey and importKey functions unchanged)
+// Generate random AES-256 key and export as base64
+const generateKey = async () => {
+  const key = await crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    true,
+    ['encrypt', 'decrypt']
+  );
+  const exported = await crypto.subtle.exportKey('raw', key);
+  return btoa(String.fromCharCode(...new Uint8Array(exported)));
+};
+
+// Import base64 string back to CryptoKey
+const importKey = async (base64Key) => {
+  try {
+    const raw = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
+    return await crypto.subtle.importKey(
+      'raw',
+      raw,
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+  } catch (err) {
+    console.error('Invalid key format:', err);
+    return null;
+  }
+};
 
 function PrivateChat() {
   const { chatId } = useParams();
@@ -50,7 +76,7 @@ function PrivateChat() {
     })();
   }, [chatId]);
 
-  // Decrypt (unchanged)
+  // Decrypt
   useEffect(() => {
     if (!cryptoKey) return;
     const decryptAll = async () => {
@@ -73,12 +99,12 @@ function PrivateChat() {
     decryptAll();
   }, [messages, cryptoKey]);
 
-  // Auto-scroll (unchanged)
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [decryptedMessages]);
 
-  // Polling (unchanged)
+  // Polling
   useEffect(() => {
     const pollMessages = async () => {
       try {
@@ -128,7 +154,6 @@ function PrivateChat() {
       }
     } else {
       localStorage.removeItem(`key_${chatId}`);
-      // Re-init demo key
       const encoder = new TextEncoder();
       const material = await crypto.subtle.importKey(
         'raw',
@@ -152,7 +177,6 @@ function PrivateChat() {
   const clearKey = () => {
     setSharedKeyInput('');
     localStorage.removeItem(`key_${chatId}`);
-    // Re-init demo key
     (async () => {
       const encoder = new TextEncoder();
       const material = await crypto.subtle.importKey(
@@ -175,7 +199,7 @@ function PrivateChat() {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !cryptoKey || keyStatus !== 'shared') return;
+    if (!newMessage.trim() || !cryptoKey) return;
 
     const encoder = new TextEncoder();
     const data = encoder.encode(newMessage);
@@ -252,8 +276,9 @@ function PrivateChat() {
         </div>
 
         {keyStatus !== 'shared' && (
-          <div style={{ background: '#fff3cd', color: '#856404', padding: '8px', borderRadius: '6px', marginBottom: '12px' }}>
-            <strong>Warning:</strong> Secure chat is disabled in demo mode. Messages are not end-to-end encrypted. Paste a shared key to enable secure messaging.
+          <div style={{ background: '#fff3cd', color: '#856404', padding: '12px', borderRadius: '6px', marginBottom: '12px', fontWeight: 'bold' }}>
+            ⚠️ Warning: Secure chat is currently disabled in demo mode. Messages are NOT end-to-end encrypted.  
+            Paste a shared key from your friend to enable real security. Do NOT send sensitive information until then!
           </div>
         )}
 
@@ -319,14 +344,12 @@ function PrivateChat() {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message"
-          disabled={keyStatus !== 'shared'}
           style={{ flex: 1, padding: '12px', border: '1px solid #ccc', borderRadius: '20px' }}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && keyStatus === 'shared' && (e.preventDefault(), sendMessage())}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
         />
         <button
           onClick={sendMessage}
-          disabled={keyStatus !== 'shared' || !newMessage.trim()}
-          style={{ marginLeft: '10px', padding: '12px 24px', background: keyStatus === 'shared' ? '#25D366' : '#ccc', color: 'white', border: 'none', borderRadius: '20px' }}
+          style={{ marginLeft: '10px', padding: '12px 24px', background: '#25D366', color: 'white', border: 'none', borderRadius: '20px', cursor: 'pointer' }}
         >
           Send
         </button>
