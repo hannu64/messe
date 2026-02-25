@@ -31,7 +31,7 @@ const importKey = async (base64Key) => {
 
 function PrivateChat() {
   const { chatId } = useParams();
-  const [messages, setMessages] = useState([]); // {encrypted: base64, sender: 'me' | 'them'}
+  const [messages, setMessages] = useState([]); // {encrypted: base64, sender: 'me'|'them'}
   const [decryptedMessages, setDecryptedMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [cryptoKey, setCryptoKey] = useState(null);
@@ -57,7 +57,7 @@ function PrivateChat() {
         key = await importKey(sharedKey);
         setKeyStatus(key ? 'shared' : 'invalid');
       } else {
-        // Fallback: derive from chatId (for old chats)
+        // Fallback: derive from chatId (old/demo chats)
         const encoder = new TextEncoder();
         const material = await crypto.subtle.importKey(
           'raw',
@@ -87,9 +87,7 @@ function PrivateChat() {
     const decryptAll = async () => {
       const decrypted = await Promise.all(
         messages.map(async (msg) => {
-          if (!msg.encrypted) {
-            return { ...msg, text: '[No content]', status: 'ok' };
-          }
+          if (!msg.encrypted) return { ...msg, text: '[No content]', status: 'ok' };
           try {
             const combined = Uint8Array.from(atob(msg.encrypted), c => c.charCodeAt(0));
             const iv = combined.slice(0, 12);
@@ -108,48 +106,45 @@ function PrivateChat() {
     decryptAll();
   }, [messages, cryptoKey]);
 
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [decryptedMessages]);
 
+  // Poll backend for new messages every 8 seconds
+  useEffect(() => {
+    const pollMessages = async () => {
+      try {
+        const res = await fetch(`https://i-msgnet-backend-production.up.railway.app/api/messages/${chatId}`);
+        if (!res.ok) {
+          console.warn('Poll failed:', res.status);
+          return;
+        }
+        const remoteMsgs = await res.json();
 
-// Polling for new messages from backend
-useEffect(() => {
-  const pollMessages = async () => {
-    try {
-      const res = await fetch(`https://i-msgnet-backend-production.up.railway.app/api/messages/${chatId}`);
-      if (!res.ok) {
-        console.warn('Poll status:', res.status);
-        return;
+        // Deduplicate: only add if encrypted string not already local
+        const localEncrypted = new Set(messages.map(m => m.encrypted));
+        const incoming = remoteMsgs.filter(rm => !localEncrypted.has(rm.encrypted));
+
+        if (incoming.length > 0) {
+          const newOnes = incoming.map(rm => ({
+            encrypted: rm.encrypted,
+            sender: 'them'
+          }));
+          const updated = [...messages, ...newOnes];
+          setMessages(updated);
+          localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
+        }
+      } catch (err) {
+        console.error('Polling error:', err);
       }
-      const remoteMsgs = await res.json();
+    };
 
-      // Deduplicate: only add if encrypted string not already local
-      const localEncrypted = new Set(messages.map(m => m.encrypted));
-      const incoming = remoteMsgs.filter(rm => !localEncrypted.has(rm.encrypted));
+    pollMessages(); // initial fetch
+    const interval = setInterval(pollMessages, 8000);
+    return () => clearInterval(interval);
+  }, [chatId, messages]);
 
-      if (incoming.length > 0) {
-        const newOnes = incoming.map(rm => ({
-          encrypted: rm.encrypted,
-          sender: 'them' // can be 'me' later if we add sender field
-        }));
-        const updated = [...messages, ...newOnes];
-        setMessages(updated);
-        localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
-      }
-    } catch (err) {
-      console.error('Polling failed:', err);
-    }
-  };
-
-  // Run immediately + every 8 seconds
-  pollMessages();
-  const interval = setInterval(pollMessages, 8000);
-  return () => clearInterval(interval);
-}, [chatId, messages]); // Re-poll after local changes
-
-  
-  
   const copyKey = async () => {
     if (!cryptoKey) return;
     const raw = await crypto.subtle.exportKey('raw', cryptoKey);
@@ -168,6 +163,7 @@ useEffect(() => {
     }
   };
 
+  // Send message (local + to backend)
   const sendMessage = async () => {
     if (!newMessage.trim() || !cryptoKey) return;
 
@@ -187,6 +183,23 @@ useEffect(() => {
     setMessages(updated);
     localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
     setNewMessage('');
+
+    // Send to backend
+    try {
+      const response = await fetch('https://i-msgnet-backend-production.up.railway.app/api/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ chatId, encrypted: base64 })
+      });
+
+      if (!response.ok) {
+        console.error('Backend send failed:', response.status);
+      }
+    } catch (err) {
+      console.error('Send to backend error:', err);
+    }
   };
 
   const simulateIncoming = async () => {
