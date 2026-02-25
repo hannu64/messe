@@ -35,28 +35,22 @@ function PrivateChat() {
   const [decryptedMessages, setDecryptedMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [cryptoKey, setCryptoKey] = useState(null);
-  const [sharedKeyInput, setSharedKeyInput] = useState(''); // only what user types/pastes
+  const [sharedKeyInput, setSharedKeyInput] = useState('');
   const [keyStatus, setKeyStatus] = useState('loading');
   const messagesEndRef = useRef(null);
 
-  // Load messages + stored shared key (if any)
+  // Load messages from localStorage
   useEffect(() => {
-    const storedMessages = JSON.parse(localStorage.getItem(`messages_${chatId}`)) || [];
-    setMessages(storedMessages);
-
-    // Do NOT pre-fill the input field
-    const storedKey = localStorage.getItem(`key_${chatId}`);
-    if (storedKey) {
-      setSharedKeyInput(''); // keep input empty
-    }
+    const stored = JSON.parse(localStorage.getItem(`messages_${chatId}`)) || [];
+    setMessages(stored);
   }, [chatId]);
 
-  // Initialize key (use stored shared key if present, otherwise fallback)
+  // Load/use stored shared key if exists, else fallback
   useEffect(() => {
     (async () => {
       const storedKey = localStorage.getItem(`key_${chatId}`);
-
       let key = null;
+
       if (storedKey) {
         key = await importKey(storedKey);
         setKeyStatus(key ? 'shared' : 'invalid');
@@ -83,7 +77,7 @@ function PrivateChat() {
     })();
   }, [chatId]);
 
-  // Decrypt messages
+  // Decrypt
   useEffect(() => {
     if (!cryptoKey) return;
     const decryptAll = async () => {
@@ -111,7 +105,7 @@ function PrivateChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [decryptedMessages]);
 
-  // Polling (unchanged)
+  // Polling
   useEffect(() => {
     const pollMessages = async () => {
       try {
@@ -123,7 +117,7 @@ function PrivateChat() {
         const incoming = remoteMsgs.filter(rm => !localEncrypted.has(rm.encrypted));
 
         if (incoming.length > 0) {
-          const newOnes = incoming.map(rm => ({ encrypted: rm.encrypted, sender: 'them' }));
+          const newOnes = incoming.map(rm => ({ encrypted: rm.encrypted, sender: 'them', timestamp: Date.now() }));
           const updated = [...messages, ...newOnes];
           setMessages(updated);
           localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
@@ -146,28 +140,70 @@ function PrivateChat() {
     alert('Key copied! Share securely outside this app.');
   };
 
-  const handleKeyPaste = (e) => {
+  const handleKeyPaste = async (e) => {
     const val = e.target.value.trim();
     setSharedKeyInput(val);
 
     if (val) {
-      localStorage.setItem(`key_${chatId}`, val);
-      // Force re-init key
-      window.location.reload(); // simple way to re-run key init
+      const imported = await importKey(val);
+      if (imported) {
+        setCryptoKey(imported);
+        setKeyStatus('shared');
+        localStorage.setItem(`key_${chatId}`, val);
+      } else {
+        setKeyStatus('invalid');
+      }
     } else {
+      // Clear key → fallback to demo
       localStorage.removeItem(`key_${chatId}`);
-      window.location.reload();
+      // Re-init demo key
+      const encoder = new TextEncoder();
+      const material = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(chatId + 'fixed-salt-for-poc'),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits', 'deriveKey']
+      );
+      const demoKey = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: encoder.encode('salt-for-poc'), iterations: 100000, hash: 'SHA-256' },
+        material,
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt', 'decrypt']
+      );
+      setCryptoKey(demoKey);
+      setKeyStatus('derived');
     }
   };
 
   const clearKey = () => {
-    localStorage.removeItem(`key_${chatId}`);
     setSharedKeyInput('');
-    window.location.reload();
+    localStorage.removeItem(`key_${chatId}`);
+    // Re-init demo key
+    (async () => {
+      const encoder = new TextEncoder();
+      const material = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(chatId + 'fixed-salt-for-poc'),
+        { name: 'PBKDF2' },
+        false,
+        ['deriveBits', 'deriveKey']
+      );
+      const demoKey = await crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: encoder.encode('salt-for-poc'), iterations: 100000, hash: 'SHA-256' },
+        material,
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt', 'decrypt']
+      );
+      setCryptoKey(demoKey);
+      setKeyStatus('derived');
+    })();
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !cryptoKey) return;
+    if (!newMessage.trim() || !cryptoKey || keyStatus === 'invalid') return;
 
     const encoder = new TextEncoder();
     const data = encoder.encode(newMessage);
@@ -198,7 +234,37 @@ function PrivateChat() {
     }
   };
 
-  const simulateIncoming = async () => { /* unchanged - keep your existing simulate function */ };
+  const simulateIncoming = async () => {
+    if (!cryptoKey) {
+      alert('No key loaded yet');
+      return;
+    }
+
+    const fakeTexts = [
+      'Hei hei!',
+      'Mitäs kuuluu?',
+      '😂😂 totta',
+      'Sataa taas...',
+      'Milloin nähdään?'
+    ];
+    const text = fakeTexts[Math.floor(Math.random() * fakeTexts.length)];
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(text);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+
+    const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, data);
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encrypted), iv.length);
+
+    const base64 = btoa(String.fromCharCode(...combined));
+    const msg = { encrypted: base64, sender: 'them', timestamp: Date.now() };
+    const updated = [...messages, msg];
+
+    setMessages(updated);
+    localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
+  };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: '20px', boxSizing: 'border-box' }}>
@@ -209,17 +275,23 @@ function PrivateChat() {
           <strong>Key status:</strong>
           <span style={{ color: keyStatus === 'shared' ? 'green' : keyStatus === 'invalid' ? 'red' : 'orange' }}>
             {keyStatus === 'shared' ? 'Using shared key ✓' :
-             keyStatus === 'derived' ? 'Using demo key (chatId-derived)' :
+             keyStatus === 'derived' ? 'Demo mode (chatId-derived key)' :
              keyStatus === 'invalid' ? 'Invalid key' : 'Loading...'}
           </span>
         </div>
+
+        {keyStatus === 'derived' && (
+          <small style={{ color: '#d9534f', display: 'block', marginBottom: '8px' }}>
+            Warning: Demo mode — messages not end-to-end encrypted with shared key. Paste a key to enable secure chat.
+          </small>
+        )}
 
         <button onClick={copyKey} disabled={!cryptoKey} style={{ padding: '8px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
           Copy my key to clipboard
         </button>
 
         <button onClick={clearKey} style={{ marginLeft: '8px', padding: '8px 16px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-          Clear key
+          Clear key / Back to demo
         </button>
 
         <div style={{ marginTop: '12px' }}>
@@ -253,14 +325,13 @@ function PrivateChat() {
               borderRadius: '18px',
               background: msg.sender === 'me' ? '#dcf8c6' : '#e3f2fd',
               boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-              wordBreak: 'break-word',
-              position: 'relative'
+              wordBreak: 'break-word'
             }}
           >
             {msg.text}
-            <small style={{ fontSize: '0.75em', opacity: 0.7, position: 'absolute', bottom: '-4px', right: '8px' }}>
+            <div style={{ fontSize: '0.75em', opacity: 0.7, marginTop: '4px', textAlign: msg.sender === 'me' ? 'right' : 'left' }}>
               {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </small>
+            </div>
           </div>
         ))}
         <div ref={messagesEndRef} />
@@ -272,10 +343,15 @@ function PrivateChat() {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message"
+          disabled={keyStatus === 'invalid'}
           style={{ flex: 1, padding: '12px', border: '1px solid #ccc', borderRadius: '20px' }}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
         />
-        <button onClick={sendMessage} style={{ marginLeft: '10px', padding: '12px 24px', background: '#25D366', color: 'white', border: 'none', borderRadius: '20px' }}>
+        <button
+          onClick={sendMessage}
+          disabled={!cryptoKey || keyStatus === 'invalid' || !newMessage.trim()}
+          style={{ marginLeft: '10px', padding: '12px 24px', background: '#25D366', color: 'white', border: 'none', borderRadius: '20px' }}
+        >
           Send
         </button>
       </div>
