@@ -7,19 +7,30 @@ function Sidebar() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Load chats from localStorage
     const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
     setChats(storedChats);
   }, []);
 
   const addChat = () => {
     if (!newChatName) return;
-    const newChatId = Date.now().toString(); // Simple unique ID
+    const newChatId = Date.now().toString();
     const updatedChats = [...chats, { id: newChatId, name: newChatName }];
     setChats(updatedChats);
     localStorage.setItem('chats', JSON.stringify(updatedChats));
     setNewChatName('');
     navigate(`/chat/${newChatId}`);
+  };
+
+  const removeChat = (chatId) => {
+    const updatedChats = chats.filter(chat => chat.id !== chatId);
+    setChats(updatedChats);
+    localStorage.setItem('chats', JSON.stringify(updatedChats));
+    localStorage.removeItem(`messages_${chatId}`);
+    localStorage.removeItem(`key_${chatId}`);
+    // If current chat is deleted, go home
+    if (window.location.pathname === `/chat/${chatId}`) {
+      navigate('/');
+    }
   };
 
   return (
@@ -32,17 +43,25 @@ function Sidebar() {
         placeholder="New chat name"
         style={{ width: '100%', marginBottom: '10px' }}
       />
-      <button onClick={addChat} style={{ width: '100%' }}>+ Add Chat</button> {/* Text icon fix: using "+" text */}
-      <ul style={{ listStyle: 'none', padding: 0 }}>
+      <button onClick={addChat} style={{ width: '100%' }}>+ Add Chat</button>
+      <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>
         {chats.map((chat) => (
-
-          <li key={chat.id}>
-            <button onClick={() => navigate(`/chat/${chat.id}`)} style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <li key={chat.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <button
+              onClick={() => navigate(`/chat/${chat.id}`)}
+              style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
               {chat.name}
-              {localStorage.getItem(`key_${chat.id}`) && <span style={{ color: 'green', fontSize: '0.8em' }}>🔒</span>}
+              {localStorage.getItem(`key_${chat.id}`) && <span style={{ color: 'green', marginLeft: '6px' }}>🔒</span>}
+            </button>
+            <button
+              onClick={() => removeChat(chat.id)}
+              style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '1.2em' }}
+              title="Remove chat"
+            >
+              🗑
             </button>
           </li>
-      
         ))}
       </ul>
     </div>
