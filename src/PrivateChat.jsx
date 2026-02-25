@@ -1,33 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 
-// Generate random AES-256 key and export as base64
-const generateKey = async () => {
-  const key = await crypto.subtle.generateKey(
-    { name: 'AES-GCM', length: 256 },
-    true,
-    ['encrypt', 'decrypt']
-  );
-  const exported = await crypto.subtle.exportKey('raw', key);
-  return btoa(String.fromCharCode(...new Uint8Array(exported)));
-};
-
-// Import base64 string back to CryptoKey
-const importKey = async (base64Key) => {
-  try {
-    const raw = Uint8Array.from(atob(base64Key), c => c.charCodeAt(0));
-    return await crypto.subtle.importKey(
-      'raw',
-      raw,
-      { name: 'AES-GCM', length: 256 },
-      true,
-      ['encrypt', 'decrypt']
-    );
-  } catch (err) {
-    console.error('Invalid key format:', err);
-    return null;
-  }
-};
+// ... (keep generateKey and importKey functions unchanged)
 
 function PrivateChat() {
   const { chatId } = useParams();
@@ -39,13 +13,13 @@ function PrivateChat() {
   const [keyStatus, setKeyStatus] = useState('loading');
   const messagesEndRef = useRef(null);
 
-  // Load messages from localStorage
+  // Load messages
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem(`messages_${chatId}`)) || [];
     setMessages(stored);
   }, [chatId]);
 
-  // Load/use stored shared key if exists, else fallback
+  // Load/use key
   useEffect(() => {
     (async () => {
       const storedKey = localStorage.getItem(`key_${chatId}`);
@@ -55,7 +29,6 @@ function PrivateChat() {
         key = await importKey(storedKey);
         setKeyStatus(key ? 'shared' : 'invalid');
       } else {
-        // Fallback demo key
         const encoder = new TextEncoder();
         const material = await crypto.subtle.importKey(
           'raw',
@@ -77,7 +50,7 @@ function PrivateChat() {
     })();
   }, [chatId]);
 
-  // Decrypt
+  // Decrypt (unchanged)
   useEffect(() => {
     if (!cryptoKey) return;
     const decryptAll = async () => {
@@ -100,12 +73,12 @@ function PrivateChat() {
     decryptAll();
   }, [messages, cryptoKey]);
 
-  // Auto-scroll
+  // Auto-scroll (unchanged)
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [decryptedMessages]);
 
-  // Polling
+  // Polling (unchanged)
   useEffect(() => {
     const pollMessages = async () => {
       try {
@@ -154,7 +127,6 @@ function PrivateChat() {
         setKeyStatus('invalid');
       }
     } else {
-      // Clear key → fallback to demo
       localStorage.removeItem(`key_${chatId}`);
       // Re-init demo key
       const encoder = new TextEncoder();
@@ -203,7 +175,7 @@ function PrivateChat() {
   };
 
   const sendMessage = async () => {
-    if (!newMessage.trim() || !cryptoKey || keyStatus === 'invalid') return;
+    if (!newMessage.trim() || !cryptoKey || keyStatus !== 'shared') return;
 
     const encoder = new TextEncoder();
     const data = encoder.encode(newMessage);
@@ -222,7 +194,6 @@ function PrivateChat() {
     localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
     setNewMessage('');
 
-    // Send to backend
     try {
       await fetch('https://i-msgnet-backend-production.up.railway.app/api/messages', {
         method: 'POST',
@@ -280,10 +251,10 @@ function PrivateChat() {
           </span>
         </div>
 
-        {keyStatus === 'derived' && (
-          <small style={{ color: '#d9534f', display: 'block', marginBottom: '8px' }}>
-            Warning: Demo mode — messages not end-to-end encrypted with shared key. Paste a key to enable secure chat.
-          </small>
+        {keyStatus !== 'shared' && (
+          <div style={{ background: '#fff3cd', color: '#856404', padding: '8px', borderRadius: '6px', marginBottom: '12px' }}>
+            <strong>Warning:</strong> Secure chat is disabled in demo mode. Messages are not end-to-end encrypted. Paste a shared key to enable secure messaging.
+          </div>
         )}
 
         <button onClick={copyKey} disabled={!cryptoKey} style={{ padding: '8px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
@@ -329,7 +300,12 @@ function PrivateChat() {
             }}
           >
             {msg.text}
-            <div style={{ fontSize: '0.75em', opacity: 0.7, marginTop: '4px', textAlign: msg.sender === 'me' ? 'right' : 'left' }}>
+            <div style={{
+              fontSize: '0.75em',
+              opacity: 0.7,
+              marginTop: '4px',
+              textAlign: msg.sender === 'me' ? 'right' : 'left'
+            }}>
               {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
           </div>
@@ -343,14 +319,14 @@ function PrivateChat() {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type a message"
-          disabled={keyStatus === 'invalid'}
+          disabled={keyStatus !== 'shared'}
           style={{ flex: 1, padding: '12px', border: '1px solid #ccc', borderRadius: '20px' }}
-          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage())}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && keyStatus === 'shared' && (e.preventDefault(), sendMessage())}
         />
         <button
           onClick={sendMessage}
-          disabled={!cryptoKey || keyStatus === 'invalid' || !newMessage.trim()}
-          style={{ marginLeft: '10px', padding: '12px 24px', background: '#25D366', color: 'white', border: 'none', borderRadius: '20px' }}
+          disabled={keyStatus !== 'shared' || !newMessage.trim()}
+          style={{ marginLeft: '10px', padding: '12px 24px', background: keyStatus === 'shared' ? '#25D366' : '#ccc', color: 'white', border: 'none', borderRadius: '20px' }}
         >
           Send
         </button>
