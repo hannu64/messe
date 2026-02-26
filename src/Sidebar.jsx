@@ -7,42 +7,37 @@ function Sidebar() {
   const navigate = useNavigate();
 
   const loadChats = () => {
-    const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
-    setChats(storedChats);
+    const stored = JSON.parse(localStorage.getItem('chats')) || [];
+    setChats(stored);
   };
 
   useEffect(() => {
     loadChats();
 
-    // Listen for storage changes from other tabs/windows/components
-    const handleStorageChange = (e) => {
-      if (e.key === 'chats') {
-        loadChats();
-      }
-    };
+    // Listen for changes from PrivateChat (name prompt)
+    const handleUpdate = () => loadChats();
+    window.addEventListener('chatsUpdated', handleUpdate);
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('chatsUpdated', handleUpdate);
   }, []);
 
   const addChat = () => {
     if (!newChatName) return;
     const newChatId = Date.now().toString();
-    const updatedChats = [...chats, { id: newChatId, name: newChatName }];
-    setChats(updatedChats);
-    localStorage.setItem('chats', JSON.stringify(updatedChats));
+    const updated = [...chats, { id: newChatId, name: newChatName }];
+    setChats(updated);
+    localStorage.setItem('chats', JSON.stringify(updated));
     setNewChatName('');
     navigate(`/chat/${newChatId}`);
   };
 
   const removeChat = (chatId) => {
-    if (!window.confirm(`Are you sure you want to remove "${chats.find(c => c.id === chatId)?.name || 'this chat'}"?`)) {
-      return;
-    }
+    const chatName = chats.find(c => c.id === chatId)?.name || 'this chat';
+    if (!window.confirm(`Are you sure you want to remove "${chatName}"?`)) return;
 
-    const updatedChats = chats.filter(chat => chat.id !== chatId);
-    setChats(updatedChats);
-    localStorage.setItem('chats', JSON.stringify(updatedChats));
+    const updated = chats.filter(c => c.id !== chatId);
+    setChats(updated);
+    localStorage.setItem('chats', JSON.stringify(updated));
     localStorage.removeItem(`messages_${chatId}`);
     localStorage.removeItem(`key_${chatId}`);
 
@@ -52,35 +47,68 @@ function Sidebar() {
   };
 
   return (
-    <div style={{ width: '250px', borderRight: '1px solid #ccc', padding: '10px' }}>
+    <div style={{ width: '250px', borderRight: '1px solid #ccc', padding: '10px', overflowY: 'auto' }}>
       <h2>Chats</h2>
       <input
         type="text"
         value={newChatName}
         onChange={(e) => setNewChatName(e.target.value)}
-        placeholder="New chat name..."
+        placeholder="New chat name"
         style={{ width: '100%', marginBottom: '10px' }}
       />
       <button onClick={addChat} style={{ width: '100%' }}>+ Add Chat</button>
+
       <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>
-        {chats.map((chat) => (
-          <li key={chat.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <button
-              onClick={() => navigate(`/chat/${chat.id}`)}
-              style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              {chat.name}
-              {localStorage.getItem(`key_${chat.id}`) && <span style={{ color: 'green', marginLeft: '6px' }}>🔒</span>}
-            </button>
-            <button
-              onClick={() => removeChat(chat.id)}
-              style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '1.2em' }}
-              title="Remove chat"
-            >
-              🗑
-            </button>
-          </li>
-        ))}
+        {chats.map((chat) => {
+          const displayName = chat.name.length > 28 
+            ? chat.name.slice(0, 25) + '...' 
+            : chat.name;
+
+          return (
+            <li key={chat.id} style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              marginBottom: '8px',
+              padding: '4px 8px',
+              borderRadius: '4px',
+              background: window.location.pathname === `/chat/${chat.id}` ? '#f0f0f0' : 'transparent'
+            }}>
+              <button
+                onClick={() => navigate(`/chat/${chat.id}`)}
+                title={chat.name}   // tooltip shows full name
+                style={{ 
+                  flex: 1, 
+                  textAlign: 'left', 
+                  background: 'none', 
+                  border: 'none', 
+                  cursor: 'pointer',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {displayName}
+                {localStorage.getItem(`key_${chat.id}`) && <span style={{ color: 'green', marginLeft: '6px' }}>🔒</span>}
+              </button>
+
+              <button
+                onClick={() => removeChat(chat.id)}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  color: '#dc3545', 
+                  cursor: 'pointer', 
+                  fontSize: '1.3em',
+                  padding: '4px'
+                }}
+                title="Remove chat"
+              >
+                🗑
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
