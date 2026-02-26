@@ -58,7 +58,7 @@ function Sidebar() {
         type="text"
         value={newChatName}
         onChange={(e) => setNewChatName(e.target.value)}
-        placeholder="New chat name"
+        placeholder="New chat name..."
         style={{ width: '100%', marginBottom: '10px' }}
       />
       <button onClick={addChat} style={{ width: '100%' }}>+ Add Chat</button>
