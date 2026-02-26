@@ -367,13 +367,11 @@ function PrivateChat() {
             style={{ width: '100%', padding: '10px', marginTop: '4px', border: '1px solid #ccc', borderRadius: '6px' }}
           />
 
-
           <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
-          The chat creator generates a key and shares it securely (e.g. via Signal, QR code, or in person).  
-          **Both** must paste the **exact same key** here to enable secure E2EE.  
-          Never send the key inside this chat!
+            The chat creator generates a key and shares it securely (e.g. via Signal, QR code, or in person).  
+            **Both** must paste the **exact same key** here to enable secure E2EE.  
+            Never send the key inside this chat!
           </small>
-
 
         </div>
 
