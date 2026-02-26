@@ -31,7 +31,7 @@ const importKey = async (base64Key) => {
 
 function PrivateChat() {
   const { chatId } = useParams();
-  const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]); // {encrypted: base64, sender: 'me'|'them', timestamp}
   const [decryptedMessages, setDecryptedMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [cryptoKey, setCryptoKey] = useState(null);
@@ -39,13 +39,13 @@ function PrivateChat() {
   const [keyStatus, setKeyStatus] = useState('loading');
   const messagesEndRef = useRef(null);
 
-  // Load messages
+  // Load messages from localStorage
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem(`messages_${chatId}`)) || [];
     setMessages(stored);
   }, [chatId]);
 
-  // Load/use key
+  // Load/use key (stored shared key if present, else fallback)
   useEffect(() => {
     (async () => {
       const storedKey = localStorage.getItem(`key_${chatId}`);
@@ -76,7 +76,7 @@ function PrivateChat() {
     })();
   }, [chatId]);
 
-  // Decrypt
+  // Decrypt messages
   useEffect(() => {
     if (!cryptoKey) return;
     const decryptAll = async () => {
@@ -104,7 +104,7 @@ function PrivateChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [decryptedMessages]);
 
-  // Polling
+  // Poll backend for new messages
   useEffect(() => {
     const pollMessages = async () => {
       try {
@@ -265,79 +265,6 @@ function PrivateChat() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: '20px', boxSizing: 'border-box' }}>
       <h2>Chat {chatId.slice(0, 8)}...</h2>
 
-
-// Add near other state declarations
-const [showNamePrompt, setShowNamePrompt] = useState(false);
-const [chatNameInput, setChatNameInput] = useState('');
-
-// Add this useEffect (after the messages load useEffect)
-useEffect(() => {
-  const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
-  const existing = storedChats.find(c => c.id === chatId);
-  if (!existing) {
-    setShowNamePrompt(true);
-  }
-}, [chatId]);
-
-// Add this inside the return, right after <h2>...</h2>
-{showNamePrompt && (
-  <div style={{ 
-    marginBottom: '16px', 
-    padding: '16px', 
-    background: '#e7f3ff', 
-    borderRadius: '8px', 
-    border: '1px solid #b3d4fc' 
-  }}>
-    <strong>Give this chat a name</strong><br />
-    <small style={{ color: '#555' }}>
-      So you can find it easily in your sidebar later.
-    </small>
-    <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-      <input
-        type="text"
-        value={chatNameInput}
-        onChange={(e) => setChatNameInput(e.target.value)}
-        placeholder="e.g. Juha / Work friend"
-        style={{ flex: 1, padding: '10px', border: '1px solid #ccc', borderRadius: '6px' }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            if (chatNameInput.trim()) {
-              const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
-              const updated = [...storedChats, { id: chatId, name: chatNameInput.trim() }];
-              localStorage.setItem('chats', JSON.stringify(updated));
-              setShowNamePrompt(false);
-              // Optional: reload to refresh sidebar if needed
-              // window.location.reload();
-            }
-          }
-        }}
-      />
-      <button
-        onClick={() => {
-          if (chatNameInput.trim()) {
-            const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
-            const updated = [...storedChats, { id: chatId, name: chatNameInput.trim() }];
-            localStorage.setItem('chats', JSON.stringify(updated));
-            setShowNamePrompt(false);
-          }
-        }}
-        style={{ padding: '10px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-      >
-        Save name
-      </button>
-      <button
-        onClick={() => setShowNamePrompt(false)}
-        style={{ padding: '10px 16px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-      >
-        Skip
-      </button>
-    </div>
-  </div>
-)}
-
-
-
       <div style={{ marginBottom: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
           <strong>Key status:</strong>
@@ -372,12 +299,10 @@ useEffect(() => {
             placeholder="Paste base64 key here..."
             style={{ width: '100%', padding: '10px', marginTop: '4px', border: '1px solid #ccc', borderRadius: '6px' }}
           />
-  
           <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
-          One person creates the key and shares it securely (e.g. via Signal or in person).  
-          Both must paste the **same key** here for secure E2EE. Never send the key in this chat!
+            One person creates the key and shares it securely (e.g. via Signal or in person).  
+            Both must paste the same key here for secure E2EE. Never send the key in this chat!
           </small>
-
         </div>
 
         <button onClick={simulateIncoming} disabled={!cryptoKey} style={{ marginTop: '12px', padding: '8px 16px', background: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
