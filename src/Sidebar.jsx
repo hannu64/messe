@@ -21,17 +21,23 @@ function Sidebar() {
     navigate(`/chat/${newChatId}`);
   };
 
+
   const removeChat = (chatId) => {
-    const updatedChats = chats.filter(chat => chat.id !== chatId);
-    setChats(updatedChats);
-    localStorage.setItem('chats', JSON.stringify(updatedChats));
-    localStorage.removeItem(`messages_${chatId}`);
-    localStorage.removeItem(`key_${chatId}`);
-    // If current chat is deleted, go home
-    if (window.location.pathname === `/chat/${chatId}`) {
-      navigate('/');
-    }
-  };
+  if (!window.confirm(`Are you sure you want to remove "${chats.find(c => c.id === chatId)?.name || 'this chat'}"?`)) {
+    return;
+  }
+
+  const updatedChats = chats.filter(chat => chat.id !== chatId);
+  setChats(updatedChats);
+  localStorage.setItem('chats', JSON.stringify(updatedChats));
+  localStorage.removeItem(`messages_${chatId}`);
+  localStorage.removeItem(`key_${chatId}`);
+
+  if (window.location.pathname === `/chat/${chatId}`) {
+    navigate('/');
+  }
+};
+
 
   return (
     <div style={{ width: '250px', borderRight: '1px solid #ccc', padding: '10px' }}>
