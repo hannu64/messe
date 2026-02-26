@@ -47,7 +47,7 @@ function PrivateChat() {
     setMessages(stored);
   }, [chatId]);
 
-  // Check if chat has a name; prompt if not
+  // Show name prompt if chat has no name yet
   useEffect(() => {
     const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
     const existing = storedChats.find(c => c.id === chatId);
@@ -304,6 +304,7 @@ function PrivateChat() {
                     localStorage.setItem('chats', JSON.stringify(updated));
                     setShowNamePrompt(false);
                     setChatNameInput('');
+                    window.dispatchEvent(new Event('chatsUpdated')); // notify sidebar
                   }
                 }
               }}
@@ -316,6 +317,7 @@ function PrivateChat() {
                   localStorage.setItem('chats', JSON.stringify(updated));
                   setShowNamePrompt(false);
                   setChatNameInput('');
+                  window.dispatchEvent(new Event('chatsUpdated'));
                 }
               }}
               style={{ padding: '10px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
@@ -366,13 +368,10 @@ function PrivateChat() {
             placeholder="Paste base64 key here..."
             style={{ width: '100%', padding: '10px', marginTop: '4px', border: '1px solid #ccc', borderRadius: '6px' }}
           />
-
           <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
-            The chat creator generates a key and shares it securely (e.g. via Signal, QR code, or in person).  
-            **Both** must paste the **exact same key** here to enable secure E2EE.  
-            Never send the key inside this chat!
+            One person creates the key and shares it securely (e.g. via Signal or in person).  
+            Both must paste the same key here for secure E2EE. Never send the key in this chat!
           </small>
-
         </div>
 
         <button onClick={simulateIncoming} disabled={!cryptoKey} style={{ marginTop: '12px', padding: '8px 16px', background: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
