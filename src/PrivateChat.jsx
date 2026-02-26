@@ -31,21 +31,32 @@ const importKey = async (base64Key) => {
 
 function PrivateChat() {
   const { chatId } = useParams();
-  const [messages, setMessages] = useState([]); // {encrypted: base64, sender: 'me'|'them', timestamp}
+  const [messages, setMessages] = useState([]);
   const [decryptedMessages, setDecryptedMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [cryptoKey, setCryptoKey] = useState(null);
   const [sharedKeyInput, setSharedKeyInput] = useState('');
   const [keyStatus, setKeyStatus] = useState('loading');
+  const [showNamePrompt, setShowNamePrompt] = useState(false);
+  const [chatNameInput, setChatNameInput] = useState('');
   const messagesEndRef = useRef(null);
 
-  // Load messages from localStorage
+  // Load messages
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem(`messages_${chatId}`)) || [];
     setMessages(stored);
   }, [chatId]);
 
-  // Load/use key (stored shared key if present, else fallback)
+  // Check if chat has a name; prompt if not
+  useEffect(() => {
+    const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
+    const existing = storedChats.find(c => c.id === chatId);
+    if (!existing) {
+      setShowNamePrompt(true);
+    }
+  }, [chatId]);
+
+  // Load/use key
   useEffect(() => {
     (async () => {
       const storedKey = localStorage.getItem(`key_${chatId}`);
@@ -76,7 +87,7 @@ function PrivateChat() {
     })();
   }, [chatId]);
 
-  // Decrypt messages
+  // Decrypt
   useEffect(() => {
     if (!cryptoKey) return;
     const decryptAll = async () => {
@@ -104,7 +115,7 @@ function PrivateChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [decryptedMessages]);
 
-  // Poll backend for new messages
+  // Polling
   useEffect(() => {
     const pollMessages = async () => {
       try {
@@ -264,6 +275,62 @@ function PrivateChat() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: '20px', boxSizing: 'border-box' }}>
       <h2>Chat {chatId.slice(0, 8)}...</h2>
+
+      {showNamePrompt && (
+        <div style={{ 
+          marginBottom: '16px', 
+          padding: '16px', 
+          background: '#e7f3ff', 
+          borderRadius: '8px', 
+          border: '1px solid #b3d4fc' 
+        }}>
+          <strong>Give this chat a name</strong><br />
+          <small style={{ color: '#555' }}>
+            So you can find it easily in your sidebar later.
+          </small>
+          <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              value={chatNameInput}
+              onChange={(e) => setChatNameInput(e.target.value)}
+              placeholder="e.g. Juha / Work friend"
+              style={{ flex: 1, padding: '10px', border: '1px solid #ccc', borderRadius: '6px' }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  if (chatNameInput.trim()) {
+                    const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
+                    const updated = [...storedChats, { id: chatId, name: chatNameInput.trim() }];
+                    localStorage.setItem('chats', JSON.stringify(updated));
+                    setShowNamePrompt(false);
+                    setChatNameInput('');
+                  }
+                }
+              }}
+            />
+            <button
+              onClick={() => {
+                if (chatNameInput.trim()) {
+                  const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
+                  const updated = [...storedChats, { id: chatId, name: chatNameInput.trim() }];
+                  localStorage.setItem('chats', JSON.stringify(updated));
+                  setShowNamePrompt(false);
+                  setChatNameInput('');
+                }
+              }}
+              style={{ padding: '10px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              Save name
+            </button>
+            <button
+              onClick={() => setShowNamePrompt(false)}
+              style={{ padding: '10px 16px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+            >
+              Skip
+            </button>
+          </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
