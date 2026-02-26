@@ -6,9 +6,23 @@ function Sidebar() {
   const [newChatName, setNewChatName] = useState('');
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadChats = () => {
     const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
     setChats(storedChats);
+  };
+
+  useEffect(() => {
+    loadChats();
+
+    // Listen for storage changes from other tabs/windows/components
+    const handleStorageChange = (e) => {
+      if (e.key === 'chats') {
+        loadChats();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
   const addChat = () => {
@@ -21,23 +35,21 @@ function Sidebar() {
     navigate(`/chat/${newChatId}`);
   };
 
-
   const removeChat = (chatId) => {
-  if (!window.confirm(`Are you sure you want to remove "${chats.find(c => c.id === chatId)?.name || 'this chat'}"?`)) {
-    return;
-  }
+    if (!window.confirm(`Are you sure you want to remove "${chats.find(c => c.id === chatId)?.name || 'this chat'}"?`)) {
+      return;
+    }
 
-  const updatedChats = chats.filter(chat => chat.id !== chatId);
-  setChats(updatedChats);
-  localStorage.setItem('chats', JSON.stringify(updatedChats));
-  localStorage.removeItem(`messages_${chatId}`);
-  localStorage.removeItem(`key_${chatId}`);
+    const updatedChats = chats.filter(chat => chat.id !== chatId);
+    setChats(updatedChats);
+    localStorage.setItem('chats', JSON.stringify(updatedChats));
+    localStorage.removeItem(`messages_${chatId}`);
+    localStorage.removeItem(`key_${chatId}`);
 
-  if (window.location.pathname === `/chat/${chatId}`) {
-    navigate('/');
-  }
-};
-
+    if (window.location.pathname === `/chat/${chatId}`) {
+      navigate('/');
+    }
+  };
 
   return (
     <div style={{ width: '250px', borderRight: '1px solid #ccc', padding: '10px' }}>
