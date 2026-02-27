@@ -61,7 +61,6 @@ function PrivateChat() {
     (async () => {
       const storedKey = localStorage.getItem(`key_${chatId}`);
       let key = null;
-
       if (storedKey) {
         key = await importKey(storedKey);
         setKeyStatus(key ? 'shared' : 'invalid');
@@ -122,10 +121,8 @@ function PrivateChat() {
         const res = await fetch(`https://i-msgnet-backend-production.up.railway.app/api/messages/${chatId}`);
         if (!res.ok) return;
         const remoteMsgs = await res.json();
-
         const localEncrypted = new Set(messages.map(m => m.encrypted));
         const incoming = remoteMsgs.filter(rm => !localEncrypted.has(rm.encrypted));
-
         if (incoming.length > 0) {
           const newOnes = incoming.map(rm => ({ encrypted: rm.encrypted, sender: 'them', timestamp: Date.now() }));
           const updated = [...messages, ...newOnes];
@@ -136,7 +133,6 @@ function PrivateChat() {
         console.error('Polling error:', err);
       }
     };
-
     pollMessages();
     const interval = setInterval(pollMessages, 8000);
     return () => clearInterval(interval);
@@ -153,7 +149,6 @@ function PrivateChat() {
   const handleKeyPaste = async (e) => {
     const val = e.target.value.trim();
     setSharedKeyInput(val);
-
     if (val) {
       const imported = await importKey(val);
       if (imported) {
@@ -211,24 +206,19 @@ function PrivateChat() {
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !cryptoKey) return;
-
     const encoder = new TextEncoder();
     const data = encoder.encode(newMessage);
     const iv = crypto.getRandomValues(new Uint8Array(12));
-
     const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, data);
     const combined = new Uint8Array(iv.length + encrypted.byteLength);
     combined.set(iv);
     combined.set(new Uint8Array(encrypted), iv.length);
-
     const base64 = btoa(String.fromCharCode(...combined));
     const msg = { encrypted: base64, sender: 'me', timestamp: Date.now() };
     const updated = [...messages, msg];
-
     setMessages(updated);
     localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
     setNewMessage('');
-
     try {
       await fetch('https://i-msgnet-backend-production.up.railway.app/api/messages', {
         method: 'POST',
@@ -245,7 +235,6 @@ function PrivateChat() {
       alert('No key loaded yet');
       return;
     }
-
     const fakeTexts = [
       'Hei hei!',
       'Mitäs kuuluu?',
@@ -254,108 +243,106 @@ function PrivateChat() {
       'Milloin nähdään?'
     ];
     const text = fakeTexts[Math.floor(Math.random() * fakeTexts.length)];
-
     const encoder = new TextEncoder();
     const data = encoder.encode(text);
     const iv = crypto.getRandomValues(new Uint8Array(12));
-
     const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, cryptoKey, data);
     const combined = new Uint8Array(iv.length + encrypted.byteLength);
     combined.set(iv);
     combined.set(new Uint8Array(encrypted), iv.length);
-
     const base64 = btoa(String.fromCharCode(...combined));
     const msg = { encrypted: base64, sender: 'them', timestamp: Date.now() };
     const updated = [...messages, msg];
-
     setMessages(updated);
     localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
+  };
+
+  // Helper for saving chat name
+  const handleSaveName = () => {
+    const trimmed = chatNameInput.trim();
+    if (trimmed.length < 2) return; // prevent save if too short
+
+    const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
+    const updated = [...storedChats, { id: chatId, name: trimmed }];
+    localStorage.setItem('chats', JSON.stringify(updated));
+    setShowNamePrompt(false);
+    setChatNameInput('');
+    window.dispatchEvent(new Event('chatsUpdated')); // notify Sidebar
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: '20px', boxSizing: 'border-box' }}>
       <h2>Chat {chatId.slice(0, 8)}...</h2>
 
+      {/* Modal name prompt */}
+      {showNamePrompt && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '28px',
+            borderRadius: '12px',
+            width: '90%',
+            maxWidth: '440px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '1.5rem' }}>
+              Name this conversation
+            </h3>
+            <p style={{ margin: '0 0 20px 0', color: '#555' }}>
+              Choose a clear label so you can easily find this chat later in the sidebar.
+            </p>
 
-{showNamePrompt && (
-  <div style={{
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.5)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 1000,
-  }}>
-    <div style={{
-      background: 'white',
-      padding: '24px',
-      borderRadius: '12px',
-      width: '90%',
-      maxWidth: '420px',
-      boxShadow: '0 10px 25px rgba(0,0,0,0.25)',
-    }}>
-      <h3 style={{ margin: '0 0 12px 0' }}>Name this conversation</h3>
-      <p style={{ margin: '0 0 16px 0', color: '#555' }}>
-        Choose a label so you can easily recognize it in your chat list later.
-      </p>
-      
-      <input
-        type="text"
-        value={chatNameInput}
-        onChange={(e) => setChatNameInput(e.target.value)}
-        placeholder="e.g. Alex – Dating, Mom, Trading group…"
-        autoFocus
-        style={{
-          width: '100%',
-          padding: '12px',
-          fontSize: '16px',
-          border: '1px solid #ccc',
-          borderRadius: '6px',
-          marginBottom: '16px',
-        }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            if (chatNameInput.trim().length >= 2) handleSaveName();
-          }
-        }}
-      />
+            <input
+              type="text"
+              value={chatNameInput}
+              onChange={(e) => setChatNameInput(e.target.value)}
+              placeholder="e.g. Juha / Work friend / Alex"
+              autoFocus
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '16px',
+                border: '1px solid #ccc',
+                borderRadius: '6px',
+                marginBottom: '20px',
+                boxSizing: 'border-box',
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSaveName();
+                }
+              }}
+            />
 
-      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-        {/* Optional: keep skip or remove */}
-        <button
-          onClick={() => setShowNamePrompt(false)}
-          style={{
-            padding: '10px 20px',
-            background: '#6c757d',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-          }}
-        >
-          Cancel / Skip
-        </button>
-        <button
-          onClick={handleSaveName}
-          disabled={!chatNameInput.trim()}
-          style={{
-            padding: '10px 20px',
-            background: chatNameInput.trim() ? '#007bff' : '#ccc',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: chatNameInput.trim() ? 'pointer' : 'not-allowed',
-          }}
-        >
-          Save name
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleSaveName}
+                disabled={chatNameInput.trim().length < 2}
+                style={{
+                  padding: '10px 24px',
+                  background: chatNameInput.trim().length >= 2 ? '#007bff' : '#ccc',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: chatNameInput.trim().length >= 2 ? 'pointer' : 'not-allowed',
+                  fontWeight: 'bold',
+                }}
+              >
+                Save name
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
@@ -369,7 +356,7 @@ function PrivateChat() {
 
         {keyStatus !== 'shared' && (
           <div style={{ background: '#fff3cd', color: '#856404', padding: '12px', borderRadius: '6px', marginBottom: '12px', fontWeight: 'bold' }}>
-            ⚠️ Warning: Secure chat is currently disabled in demo mode. Messages are NOT end-to-end encrypted.  
+            ⚠️ Warning: Secure chat is currently disabled in demo mode. Messages are NOT end-to-end encrypted.
             Paste a shared key from your friend to enable real security. Do NOT send sensitive information until then!
           </div>
         )}
@@ -377,7 +364,6 @@ function PrivateChat() {
         <button onClick={copyKey} disabled={!cryptoKey} style={{ padding: '8px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
           Copy my key to clipboard
         </button>
-
         <button onClick={clearKey} style={{ marginLeft: '8px', padding: '8px 16px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
           Clear key / Back to demo
         </button>
@@ -392,7 +378,7 @@ function PrivateChat() {
             style={{ width: '100%', padding: '10px', marginTop: '4px', border: '1px solid #ccc', borderRadius: '6px' }}
           />
           <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
-            One person creates the key and shares it securely (e.g. via Signal or in person).  
+            One person creates the key and shares it securely (e.g. via Signal or in person).
             Both must paste the same key here for secure E2EE. Never send the key in this chat!
           </small>
         </div>
