@@ -324,12 +324,8 @@ function PrivateChat() {
             >
               Save name
             </button>
-            <button
-              onClick={() => setShowNamePrompt(false)}
-              style={{ padding: '10px 16px', background: '#6c757d', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              Skip
-            </button>
+
+
           </div>
         </div>
       )}
