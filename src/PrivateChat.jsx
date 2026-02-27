@@ -41,13 +41,13 @@ function PrivateChat() {
   const [chatNameInput, setChatNameInput] = useState('');
   const messagesEndRef = useRef(null);
 
-  // Load messages
+  // Load messages from localStorage
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem(`messages_${chatId}`)) || [];
     setMessages(stored);
   }, [chatId]);
 
-  // Show name prompt if chat has no name yet
+  // Show name prompt if chat not saved yet
   useEffect(() => {
     const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
     const existing = storedChats.find(c => c.id === chatId);
@@ -56,7 +56,7 @@ function PrivateChat() {
     }
   }, [chatId]);
 
-  // Load/use key
+  // Load or derive key
   useEffect(() => {
     (async () => {
       const storedKey = localStorage.getItem(`key_${chatId}`);
@@ -86,7 +86,7 @@ function PrivateChat() {
     })();
   }, [chatId]);
 
-  // Decrypt
+  // Decrypt all messages when messages or key change
   useEffect(() => {
     if (!cryptoKey) return;
     const decryptAll = async () => {
@@ -109,34 +109,45 @@ function PrivateChat() {
     decryptAll();
   }, [messages, cryptoKey]);
 
-  // Auto-scroll
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [decryptedMessages]);
 
-  // Polling
+  // Polling – safer version with functional update
   useEffect(() => {
     const pollMessages = async () => {
       try {
         const res = await fetch(`https://i-msgnet-backend-production.up.railway.app/api/messages/${chatId}`);
         if (!res.ok) return;
         const remoteMsgs = await res.json();
-        const localEncrypted = new Set(messages.map(m => m.encrypted));
-        const incoming = remoteMsgs.filter(rm => !localEncrypted.has(rm.encrypted));
-        if (incoming.length > 0) {
-          const newOnes = incoming.map(rm => ({ encrypted: rm.encrypted, sender: 'them', timestamp: Date.now() }));
-          const updated = [...messages, ...newOnes];
-          setMessages(updated);
+
+        setMessages(prevMessages => {
+          const localEncryptedSet = new Set(prevMessages.map(m => m.encrypted));
+
+          const incoming = remoteMsgs.filter(rm => !localEncryptedSet.has(rm.encrypted));
+
+          if (incoming.length === 0) return prevMessages;
+
+          const newOnes = incoming.map(rm => ({
+            encrypted: rm.encrypted,
+            sender: 'them',
+            timestamp: rm.timestamp || Date.now()  // prefer server timestamp if sent
+          }));
+
+          const updated = [...prevMessages, ...newOnes];
           localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
-        }
+          return updated;
+        });
       } catch (err) {
         console.error('Polling error:', err);
       }
     };
-    pollMessages();
+
+    pollMessages(); // initial fetch
     const interval = setInterval(pollMessages, 8000);
     return () => clearInterval(interval);
-  }, [chatId, messages]);
+  }, [chatId]);
 
   const copyKey = async () => {
     if (!cryptoKey) return;
@@ -214,19 +225,28 @@ function PrivateChat() {
     combined.set(iv);
     combined.set(new Uint8Array(encrypted), iv.length);
     const base64 = btoa(String.fromCharCode(...combined));
+
     const msg = { encrypted: base64, sender: 'me', timestamp: Date.now() };
-    const updated = [...messages, msg];
-    setMessages(updated);
-    localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
+    setMessages(prev => {
+      const updated = [...prev, msg];
+      localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
+      return updated;
+    });
+
     setNewMessage('');
+
     try {
-      await fetch('https://i-msgnet-backend-production.up.railway.app/api/messages', {
+      const response = await fetch('https://i-msgnet-backend-production.up.railway.app/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatId, encrypted: base64 })
       });
+
+      if (!response.ok) {
+        console.error('Send failed:', response.status, await response.text());
+      }
     } catch (err) {
-      console.error('Backend send failed:', err);
+      console.error('Backend send error:', err);
     }
   };
 
@@ -252,29 +272,30 @@ function PrivateChat() {
     combined.set(new Uint8Array(encrypted), iv.length);
     const base64 = btoa(String.fromCharCode(...combined));
     const msg = { encrypted: base64, sender: 'them', timestamp: Date.now() };
-    const updated = [...messages, msg];
-    setMessages(updated);
-    localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
+
+    setMessages(prev => {
+      const updated = [...prev, msg];
+      localStorage.setItem(`messages_${chatId}`, JSON.stringify(updated));
+      return updated;
+    });
   };
 
-  // Helper for saving chat name
   const handleSaveName = () => {
     const trimmed = chatNameInput.trim();
-    if (trimmed.length < 2) return; // prevent save if too short
+    if (trimmed.length < 2) return;
 
     const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
     const updated = [...storedChats, { id: chatId, name: trimmed }];
     localStorage.setItem('chats', JSON.stringify(updated));
     setShowNamePrompt(false);
     setChatNameInput('');
-    window.dispatchEvent(new Event('chatsUpdated')); // notify Sidebar
+    window.dispatchEvent(new Event('chatsUpdated'));
   };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: '20px', boxSizing: 'border-box' }}>
       <h2>Chat {chatId.slice(0, 8)}...</h2>
 
-      {/* Modal name prompt */}
       {showNamePrompt && (
         <div style={{
           position: 'fixed',
@@ -361,7 +382,6 @@ function PrivateChat() {
           </div>
         )}
 
-
         {keyStatus === 'derived' && (
           <div style={{ margin: '12px 0' }}>
             <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
@@ -372,19 +392,18 @@ function PrivateChat() {
               disabled={!cryptoKey}
               style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px' }}
             >
-              Copy my demo key to share
+              Copy demo key to share (testing only)
             </button>
           </div>
         )}
 
         {keyStatus === 'shared' && (
-          <small style={{ color: '#28a745', fontWeight: 'bold' }}>
+          <small style={{ color: '#28a745', fontWeight: 'bold', display: 'block', margin: '12px 0' }}>
             ✓ Using shared secret key — messages are end-to-end encrypted
           </small>
         )}
 
-
-        <button onClick={clearKey} style={{ marginLeft: '8px', padding: '8px 16px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+        <button onClick={clearKey} style={{ padding: '8px 16px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
           Clear key / Back to demo
         </button>
 
