@@ -361,9 +361,29 @@ function PrivateChat() {
           </div>
         )}
 
-        <button onClick={copyKey} disabled={!cryptoKey} style={{ padding: '8px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-          Copy my key to clipboard
-        </button>
+
+        {keyStatus === 'derived' && (
+          <div style={{ margin: '12px 0' }}>
+            <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
+              Want to start a secure chat with someone?
+            </p>
+            <button
+              onClick={copyKey}
+              disabled={!cryptoKey}
+              style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px' }}
+            >
+              Copy my demo key to share
+            </button>
+          </div>
+        )}
+
+        {keyStatus === 'shared' && (
+          <small style={{ color: '#28a745', fontWeight: 'bold' }}>
+            ✓ Using shared secret key — messages are end-to-end encrypted
+          </small>
+        )}
+
+
         <button onClick={clearKey} style={{ marginLeft: '8px', padding: '8px 16px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
           Clear key / Back to demo
         </button>
