@@ -276,59 +276,86 @@ function PrivateChat() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', padding: '20px', boxSizing: 'border-box' }}>
       <h2>Chat {chatId.slice(0, 8)}...</h2>
 
-      {showNamePrompt && (
-        <div style={{ 
-          marginBottom: '16px', 
-          padding: '16px', 
-          background: '#e7f3ff', 
-          borderRadius: '8px', 
-          border: '1px solid #b3d4fc' 
-        }}>
-          <strong>Give this chat a name</strong><br />
-          <small style={{ color: '#555' }}>
-            So you can find it easily in your sidebar later.
-          </small>
-          <div style={{ marginTop: '12px', display: 'flex', gap: '8px' }}>
-            <input
-              type="text"
-              value={chatNameInput}
-              onChange={(e) => setChatNameInput(e.target.value)}
-              placeholder="e.g. Juha / Work friend"
-              style={{ flex: 1, padding: '10px', border: '1px solid #ccc', borderRadius: '6px' }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  if (chatNameInput.trim()) {
-                    const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
-                    const updated = [...storedChats, { id: chatId, name: chatNameInput.trim() }];
-                    localStorage.setItem('chats', JSON.stringify(updated));
-                    setShowNamePrompt(false);
-                    setChatNameInput('');
-                    window.dispatchEvent(new Event('chatsUpdated')); // notify sidebar
-                  }
-                }
-              }}
-            />
-            <button
-              onClick={() => {
-                if (chatNameInput.trim()) {
-                  const storedChats = JSON.parse(localStorage.getItem('chats')) || [];
-                  const updated = [...storedChats, { id: chatId, name: chatNameInput.trim() }];
-                  localStorage.setItem('chats', JSON.stringify(updated));
-                  setShowNamePrompt(false);
-                  setChatNameInput('');
-                  window.dispatchEvent(new Event('chatsUpdated'));
-                }
-              }}
-              style={{ padding: '10px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-            >
-              Save name
-            </button>
 
+{showNamePrompt && (
+  <div style={{
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000,
+  }}>
+    <div style={{
+      background: 'white',
+      padding: '24px',
+      borderRadius: '12px',
+      width: '90%',
+      maxWidth: '420px',
+      boxShadow: '0 10px 25px rgba(0,0,0,0.25)',
+    }}>
+      <h3 style={{ margin: '0 0 12px 0' }}>Name this conversation</h3>
+      <p style={{ margin: '0 0 16px 0', color: '#555' }}>
+        Choose a label so you can easily recognize it in your chat list later.
+      </p>
+      
+      <input
+        type="text"
+        value={chatNameInput}
+        onChange={(e) => setChatNameInput(e.target.value)}
+        placeholder="e.g. Alex – Dating, Mom, Trading group…"
+        autoFocus
+        style={{
+          width: '100%',
+          padding: '12px',
+          fontSize: '16px',
+          border: '1px solid #ccc',
+          borderRadius: '6px',
+          marginBottom: '16px',
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (chatNameInput.trim().length >= 2) handleSaveName();
+          }
+        }}
+      />
 
-          </div>
-        </div>
-      )}
+      <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+        {/* Optional: keep skip or remove */}
+        <button
+          onClick={() => setShowNamePrompt(false)}
+          style={{
+            padding: '10px 20px',
+            background: '#6c757d',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+          }}
+        >
+          Cancel / Skip
+        </button>
+        <button
+          onClick={handleSaveName}
+          disabled={!chatNameInput.trim()}
+          style={{
+            padding: '10px 20px',
+            background: chatNameInput.trim() ? '#007bff' : '#ccc',
+            color: 'white',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: chatNameInput.trim() ? 'pointer' : 'not-allowed',
+          }}
+        >
+          Save name
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
       <div style={{ marginBottom: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
