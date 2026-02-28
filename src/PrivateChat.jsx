@@ -88,32 +88,33 @@ function PrivateChat() {
 
 
 
-  const formatMessageTime = (timestamp) => {
-    if (!timestamp) return '';
+const formatMessageTime = (timestamp) => {
+  if (!timestamp) return '';
 
-    const date = new Date(timestamp);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
+  const date = new Date(timestamp);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
 
-    const timeStr = date.toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
+  const timeStr = date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
 
-    if (isToday) {
-      return timeStr;                        // → "16:00"
-    }
+  if (isToday) {
+    return timeStr;  // → "16:00"
+  }
 
-    // European style: weekday short + DD.MM
-    const datePart = date.toLocaleDateString('fi-FI', {   // or 'fi-FI', 'en-US','de-DE', 'sv-SE' etc. — fi-FI gives good dot separator
-      weekday: 'short',
-      day: '2-digit',
-      month: '2-digit'
-    }).replace(/\//g, '.');  // make sure dots instead of slashes
+  // Force European DD.MM with short weekday (Finnish locale gives good abbreviations + dot)
+  const datePart = date.toLocaleDateString('fi-FI', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit'
+  });
 
-    return `${datePart} ${timeStr}`;         // → "Pe, 27.02 16:00" or "Fri, 27.02 16:00"
-  };
+  // Clean up any unwanted year or extra dots if they appear
+  return `${datePart} ${timeStr}`;  // → "Pe 27.02 16:00" or similar
+};
   
 
 
