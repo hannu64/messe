@@ -45,6 +45,10 @@ function PrivateChat() {
   const [chatNameInput, setChatNameInput] = useState('');
   const messagesEndRef = useRef(null);
 
+  const [showPassphraseInput, setShowPassphraseInput] = useState(false);
+  const [passphrase, setPassphrase] = useState('');
+  const [passphraseError, setPassphraseError] = useState('');
+
 
   const generateAndSetRandomKey = async () => {
     const base64Key = await generateKey();  // your existing generateKey function
@@ -58,6 +62,57 @@ function PrivateChat() {
       alert('New random key generated and copied to clipboard!\nShare this securely with your friend.');
     }
   };
+
+const deriveKeyFromPassphrase = async (pass) => {
+  if (pass.length < 12) {
+    setPassphraseError('Passphrase must be at least 12 characters');
+    return;
+  }
+
+  try {
+    const encoder = new TextEncoder();
+    const salt = encoder.encode('i-msgnet-passphrase-salt-2026'); // fixed salt – change if you want per-chat
+    const material = await crypto.subtle.importKey(
+      'raw',
+      encoder.encode(pass),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveBits', 'deriveKey']
+    );
+
+    const derivedKey = await crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt,
+        iterations: 150000, // high enough for good security
+        hash: 'SHA-256'
+      },
+      material,
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    );
+
+    // Export to base64 so we can store it like other keys
+    const exported = await crypto.subtle.exportKey('raw', derivedKey);
+    const base64Key = btoa(String.fromCharCode(...new Uint8Array(exported)));
+
+    setCryptoKey(derivedKey);
+    setKeyStatus('shared');
+    setSharedKeyInput(base64Key); // show in paste field
+    localStorage.setItem(`key_${chatId}`, base64Key);
+
+    setPassphraseError('');
+    setShowPassphraseInput(false);
+    setPassphrase('');
+
+    alert('Passphrase accepted! Key derived and set. Your friend must enter the exact same passphrase.');
+  } catch (err) {
+    console.error('Passphrase derivation failed:', err);
+    setPassphraseError('Failed to derive key – try again');
+  }
+};
+
 
 
   // Load messages from localStorage
@@ -474,6 +529,24 @@ const formatMessageTime = (timestamp) => {
             Generate secure random key
           </button>
 
+
+          <button
+            onClick={() => setShowPassphraseInput(true)}
+            style={{
+              padding: '10px 20px',
+              background: '#007bff',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              minWidth: '220px'
+            }}
+          >
+            Use shared passphrase
+          </button>
+
+
           <button
             onClick={clearKey}
             style={{
@@ -558,6 +631,89 @@ const formatMessageTime = (timestamp) => {
   >
     Simulate incoming message (test decrypt)
   </button>
+
+
+{showPassphraseInput && (
+  <div style={{
+    marginTop: '16px',
+    padding: '12px',
+    background: '#e7f3ff',
+    borderRadius: '8px',
+    border: '1px solid #b3d4fc'
+  }}>
+    <strong>Enter shared passphrase</strong><br />
+    <small style={{ color: '#555' }}>
+      Both you and your friend must type the **exact same passphrase** (min 12 characters).<br />
+      Agree on it outside this chat (e.g. phone call, in person, secure message).
+    </small>
+
+    <input
+      type="password"  // hides typing
+      value={passphrase}
+      onChange={(e) => {
+        setPassphrase(e.target.value);
+        setPassphraseError('');
+      }}
+      placeholder="Your shared passphrase (min 12 chars)"
+      style={{
+        width: '100%',
+        padding: '10px',
+        margin: '12px 0',
+        border: '1px solid #ccc',
+        borderRadius: '6px',
+        fontFamily: 'monospace'
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          deriveKeyFromPassphrase(passphrase);
+        }
+      }}
+    />
+
+    {passphraseError && (
+      <div style={{ color: '#dc3545', marginBottom: '8px' }}>
+        {passphraseError}
+      </div>
+    )}
+
+    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+      <button
+        onClick={() => {
+          setShowPassphraseInput(false);
+          setPassphrase('');
+          setPassphraseError('');
+        }}
+        style={{
+          padding: '8px 16px',
+          background: '#6c757d',
+          color: 'white',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer'
+        }}
+      >
+        Cancel
+      </button>
+      <button
+        onClick={() => deriveKeyFromPassphrase(passphrase)}
+        disabled={passphrase.length < 12}
+        style={{
+          padding: '8px 16px',
+          background: passphrase.length >= 12 ? '#007bff' : '#ccc',
+          color: 'white',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: passphrase.length >= 12 ? 'pointer' : 'not-allowed'
+        }}
+      >
+        Use this passphrase
+      </button>
+    </div>
+  </div>
+)}
+
+
 </div>
 
 
