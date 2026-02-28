@@ -19,7 +19,21 @@ function Sidebar() {
         console.warn('Removed invalid chat entries');
         localStorage.setItem('chats', JSON.stringify(validChats));
       }
-      setChats(validChats);
+
+      // Enrich with last message preview
+      const enriched = validChats.map(chat => {
+        const msgs = JSON.parse(localStorage.getItem(`messages_${chat.id}`)) || [];
+        const lastMsg = msgs[msgs.length - 1];
+        let preview = '';
+        if (lastMsg) {
+          // We'll decrypt later if needed; for now use raw encrypted or skip
+          // Simplest: show nothing meaningful yet, or placeholder
+          preview = '…'; // placeholder until we add decryption here
+        }
+        return { ...chat, preview };
+      });
+
+      setChats(enriched);
     } catch (err) {
       console.error('Failed to load chats:', err);
       setChats([]);
@@ -33,7 +47,6 @@ function Sidebar() {
     return () => window.removeEventListener('chatsUpdated', handleUpdate);
   }, []);
 
-  // Focus input when starting edit
   useEffect(() => {
     if (editingChatId && editInputRef.current) {
       editInputRef.current.focus();
@@ -55,7 +68,7 @@ function Sidebar() {
       c.id === chatId ? { ...c, name: editNameInput.trim() } : c
     );
     setChats(updated);
-    localStorage.setItem('chats', JSON.stringify(updated));
+    localStorage.setItem('chats', JSON.stringify(updated.map(c => ({ id: c.id, name: c.name }))));
     window.dispatchEvent(new Event('chatsUpdated'));
     cancelEdit();
   };
@@ -79,7 +92,7 @@ function Sidebar() {
     const newChatId = Date.now().toString();
     const updated = [...chats, { id: newChatId, name: newChatName.trim() }];
     setChats(updated);
-    localStorage.setItem('chats', JSON.stringify(updated));
+    localStorage.setItem('chats', JSON.stringify(updated.map(c => ({ id: c.id, name: c.name }))));
     setNewChatName('');
     navigate(`/chat/${newChatId}`);
   };
@@ -90,7 +103,7 @@ function Sidebar() {
 
     const updated = chats.filter(c => c.id !== chatId);
     setChats(updated);
-    localStorage.setItem('chats', JSON.stringify(updated));
+    localStorage.setItem('chats', JSON.stringify(updated.map(c => ({ id: c.id, name: c.name }))));
     localStorage.removeItem(`messages_${chatId}`);
     localStorage.removeItem(`key_${chatId}`);
 
@@ -126,99 +139,111 @@ function Sidebar() {
               key={chat.id} 
               style={{ 
                 display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between', 
-                marginBottom: '8px',
-                padding: '4px 8px',
-                borderRadius: '4px',
+                flexDirection: 'column',
+                marginBottom: '12px',
+                padding: '6px 8px',
+                borderRadius: '6px',
                 background: window.location.pathname === `/chat/${chat.id}` ? '#f0f0f0' : 'transparent'
               }}
             >
-              {isEditing ? (
-                <input
-                  ref={editInputRef}
-                  type="text"
-                  value={editNameInput}
-                  onChange={(e) => setEditNameInput(e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, chat.id)}
-                  onBlur={() => saveEdit(chat.id)}
-                  style={{
-                    flex: 1,
-                    padding: '4px 8px',
-                    border: '1px solid #007bff',
-                    borderRadius: '4px',
-                    outline: 'none'
-                  }}
-                />
-              ) : (
-                <button
-                  onClick={() => navigate(`/chat/${chat.id}`)}
-                  title={safeName}
-                  style={{ 
-                    flex: 1, 
-                    textAlign: 'left', 
-                    background: 'none', 
-                    border: 'none', 
-                    cursor: 'pointer',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {displayName}
-                  {localStorage.getItem(`key_${chat.id}`) && <span style={{ color: 'green', marginLeft: '6px' }}>🔒</span>}
-                </button>
-              )}
-
-              <div style={{ display: 'flex', gap: '4px' }}>
-                {!isEditing && (
-                  <button
-                    onClick={() => startEdit(chat)}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                {isEditing ? (
+                  <input
+                    ref={editInputRef}
+                    type="text"
+                    value={editNameInput}
+                    onChange={(e) => setEditNameInput(e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(e, chat.id)}
+                    onBlur={() => saveEdit(chat.id)}
                     style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#007bff',
-                      cursor: 'pointer',
-                      fontSize: '1.2em',
-                      padding: '4px'
+                      flex: 1,
+                      padding: '4px 8px',
+                      border: '1px solid #007bff',
+                      borderRadius: '4px',
+                      outline: 'none'
                     }}
-                    title="Rename chat"
+                  />
+                ) : (
+                  <button
+                    onClick={() => navigate(`/chat/${chat.id}`)}
+                    title={safeName}
+                    style={{ 
+                      flex: 1, 
+                      textAlign: 'left', 
+                      background: 'none', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      fontWeight: '500'
+                    }}
                   >
-                    ✏️
+                    {displayName}
+                    {localStorage.getItem(`key_${chat.id}`) && <span style={{ color: 'green', marginLeft: '6px' }}>🔒</span>}
                   </button>
                 )}
 
-                {isEditing && (
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {!isEditing && (
+                    <button
+                      onClick={() => startEdit(chat)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#007bff',
+                        cursor: 'pointer',
+                        fontSize: '1.1em',
+                        padding: '2px 6px'
+                      }}
+                      title="Rename chat"
+                    >
+                      ✏️
+                    </button>
+                  )}
+
+                  {isEditing && (
+                    <button
+                      onClick={() => saveEdit(chat.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#28a745',
+                        cursor: 'pointer',
+                        fontSize: '1.3em',
+                        padding: '2px 6px'
+                      }}
+                      title="Save"
+                    >
+                      ✓
+                    </button>
+                  )}
+
                   <button
-                    onClick={() => saveEdit(chat.id)}
+                    onClick={() => removeChat(chat.id)}
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#28a745',
+                      color: '#dc3545',
                       cursor: 'pointer',
-                      fontSize: '1.2em',
-                      padding: '4px'
+                      fontSize: '1.3em',
+                      padding: '2px 6px'
                     }}
-                    title="Save"
+                    title="Remove chat"
                   >
-                    ✓
+                    🗑
                   </button>
-                )}
+                </div>
+              </div>
 
-                <button
-                  onClick={() => removeChat(chat.id)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#dc3545',
-                    cursor: 'pointer',
-                    fontSize: '1.3em',
-                    padding: '4px'
-                  }}
-                  title="Remove chat"
-                >
-                  🗑
-                </button>
+              {/* Last message preview */}
+              <div style={{
+                fontSize: '0.85em',
+                color: '#666',
+                marginTop: '4px',
+                paddingLeft: '4px',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis'
+              }}>
+                {chat.preview || 'No messages yet'}
               </div>
             </li>
           );
