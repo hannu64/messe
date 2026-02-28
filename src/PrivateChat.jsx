@@ -430,76 +430,80 @@ const formatMessageTime = (timestamp) => {
 <div style={{ marginBottom: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
     <strong>Key status:</strong>
-    <span style={{ color: keyStatus === 'shared' ? 'green' : keyStatus === 'invalid' ? 'red' : 'orange' }}>
-      {keyStatus === 'shared' ? 'Using shared key ✓' :
-       keyStatus === 'derived' ? 'Demo mode (chatId-derived key)' :
+    <span style={{ 
+      color: keyStatus === 'shared' ? 'green' : 
+             keyStatus === 'invalid' ? 'red' : 'orange' 
+    }}>
+      {keyStatus === 'shared' ? 'Using secure key ✓' :
+       keyStatus === 'derived' ? 'Demo mode active' :
        keyStatus === 'invalid' ? 'Invalid key' : 'Loading...'}
     </span>
   </div>
 
-  {/* Warning only in demo */}
-  {keyStatus !== 'shared' && (
-    <div style={{ background: '#fff3cd', color: '#856404', padding: '12px', borderRadius: '6px', marginBottom: '12px', fontWeight: 'bold' }}>
-      ⚠️ Warning: Secure chat is currently disabled in demo mode. Messages are NOT end-to-end encrypted.
-      Paste a shared key or generate one to enable real security. Do NOT send sensitive information until then!
-    </div>
-  )}
-
-  {/* Demo mode controls */}
+  {/* Warning / guidance – only in demo */}
   {keyStatus === 'derived' && (
-    <div style={{ margin: '16px 0 12px 0' }}>
-      <p style={{ 
-        margin: '0 0 12px 0', 
-        fontWeight: 'bold', 
-        fontSize: '1.1em',
-        color: '#856404'
+    <>
+      <div style={{ 
+        background: '#fff3cd', 
+        color: '#856404', 
+        padding: '12px', 
+        borderRadius: '6px', 
+        marginBottom: '16px', 
+        fontWeight: 'bold' 
       }}>
-        Currently using quick test mode (demo key from chat ID – not secure)
-      </p>
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-        <button
-          onClick={generateAndSetRandomKey}
-          style={{
-            padding: '10px 20px',
-            background: '#28a745',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
-        >
-          Generate secure random key
-        </button>
-        <button
-          onClick={clearKey}
-          style={{
-            padding: '10px 20px',
-            background: '#dc3545',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: 'bold'
-          }}
-        >
-          Use demo mode (clear secret key)
-        </button>
+        Demo mode active – messages are encrypted but only with a weak, chat-ID-derived key.<br />
+        Click the green button to generate a secure random key and share it safely.<br />
+        <strong>Do NOT send sensitive information until then!</strong>
       </div>
-    </div>
+
+      <div style={{ margin: '0 0 12px 0' }}>
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <button
+            onClick={generateAndSetRandomKey}
+            style={{
+              padding: '10px 20px',
+              background: '#28a745',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              minWidth: '220px'
+            }}
+          >
+            Generate secure random key
+          </button>
+
+          <button
+            onClick={clearKey}
+            style={{
+              padding: '10px 20px',
+              background: '#dc3545',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              minWidth: '220px'
+            }}
+          >
+            Use demo mode (clear secret key)
+          </button>
+        </div>
+      </div>
+    </>
   )}
 
-  {/* Secure mode status + clear button */}
+  {/* Secure mode */}
   {keyStatus === 'shared' && (
     <div style={{ margin: '12px 0' }}>
-      <small style={{ 
+      <div style={{ 
         color: '#28a745', 
         fontWeight: 'bold', 
-        display: 'block', 
         marginBottom: '12px' 
       }}>
         ✓ Using secure random/shared key — messages are end-to-end encrypted
-      </small>
+      </div>
       <button
         onClick={clearKey}
         style={{
@@ -516,27 +520,47 @@ const formatMessageTime = (timestamp) => {
     </div>
   )}
 
-  {/* Paste field always visible */}
-  <div style={{ marginTop: '12px' }}>
-    <label>Paste shared secret key:</label><br />
+  {/* Always-visible paste field */}
+  <div style={{ marginTop: keyStatus === 'derived' ? '0' : '16px' }}>
+    <label>Paste shared secret key (if your friend generated one):</label><br />
     <input
       type="text"
       value={sharedKeyInput}
       onChange={handleKeyPaste}
       placeholder="Paste base64 key here..."
-      style={{ width: '100%', padding: '10px', marginTop: '4px', border: '1px solid #ccc', borderRadius: '6px' }}
+      style={{ 
+        width: '100%', 
+        padding: '10px', 
+        marginTop: '4px', 
+        border: '1px solid #ccc', 
+        borderRadius: '6px' 
+      }}
     />
     <small style={{ color: '#666', display: 'block', marginTop: '4px' }}>
-      One person creates the key and shares it securely (e.g. via Signal or in person).
+      One person generates the key and shares it securely (e.g. via Signal or in person).
       Both must paste the same key here for secure E2EE. Never send the key in this chat!
     </small>
   </div>
 
-  {/* Simulate button etc. */}
-  <button onClick={simulateIncoming} disabled={!cryptoKey} style={{ marginTop: '12px', padding: '8px 16px', background: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+  {/* Simulate button remains */}
+  <button 
+    onClick={simulateIncoming} 
+    disabled={!cryptoKey} 
+    style={{ 
+      marginTop: '12px', 
+      padding: '8px 16px', 
+      background: '#28a745', 
+      color: 'white', 
+      border: 'none', 
+      borderRadius: '6px', 
+      cursor: 'pointer' 
+    }}
+  >
     Simulate incoming message (test decrypt)
   </button>
 </div>
+
+
 
 
 
