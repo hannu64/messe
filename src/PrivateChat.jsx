@@ -106,7 +106,7 @@ function PrivateChat() {
     }
 
     // European style: weekday short + DD.MM
-    const datePart = date.toLocaleDateString('fi-FI', {   // or 'de-DE', 'sv-SE' etc. — fi-FI gives good dot separator
+    const datePart = date.toLocaleDateString('en-US', {   // or 'fi-FI', 'de-DE', 'sv-SE' etc. — fi-FI gives good dot separator
       weekday: 'short',
       day: '2-digit',
       month: '2-digit'
