@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function Sidebar() {
   const [chats, setChats] = useState([]);
   const [newChatName, setNewChatName] = useState('');
+  const [editingChatId, setEditingChatId] = useState(null);
+  const [editNameInput, setEditNameInput] = useState('');
+  const editInputRef = useRef(null);
   const navigate = useNavigate();
 
   const loadChats = () => {
     try {
       const stored = JSON.parse(localStorage.getItem('chats')) || [];
-      // Filter out invalid entries to prevent crashes
       const validChats = stored.filter(chat => 
         chat && typeof chat === 'object' && chat.id && typeof chat.name === 'string'
       );
       if (validChats.length < stored.length) {
-        console.warn('Removed invalid chat entries from localStorage');
+        console.warn('Removed invalid chat entries');
         localStorage.setItem('chats', JSON.stringify(validChats));
       }
       setChats(validChats);
@@ -30,6 +32,47 @@ function Sidebar() {
     window.addEventListener('chatsUpdated', handleUpdate);
     return () => window.removeEventListener('chatsUpdated', handleUpdate);
   }, []);
+
+  // Focus input when starting edit
+  useEffect(() => {
+    if (editingChatId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingChatId]);
+
+  const startEdit = (chat) => {
+    setEditingChatId(chat.id);
+    setEditNameInput(chat.name);
+  };
+
+  const saveEdit = (chatId) => {
+    if (!editNameInput.trim()) {
+      cancelEdit();
+      return;
+    }
+    const updated = chats.map(c => 
+      c.id === chatId ? { ...c, name: editNameInput.trim() } : c
+    );
+    setChats(updated);
+    localStorage.setItem('chats', JSON.stringify(updated));
+    window.dispatchEvent(new Event('chatsUpdated'));
+    cancelEdit();
+  };
+
+  const cancelEdit = () => {
+    setEditingChatId(null);
+    setEditNameInput('');
+  };
+
+  const handleKeyDown = (e, chatId) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEdit(chatId);
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    }
+  };
 
   const addChat = () => {
     if (!newChatName.trim()) return;
@@ -70,7 +113,7 @@ function Sidebar() {
 
       <ul style={{ listStyle: 'none', padding: 0, marginTop: '20px' }}>
         {chats.map((chat) => {
-          // Safe name handling
+          const isEditing = editingChatId === chat.id;
           const safeName = (typeof chat.name === 'string' && chat.name.trim())
             ? chat.name
             : `Chat ${chat.id.slice(0, 8)}...`;
@@ -91,38 +134,92 @@ function Sidebar() {
                 background: window.location.pathname === `/chat/${chat.id}` ? '#f0f0f0' : 'transparent'
               }}
             >
-              <button
-                onClick={() => navigate(`/chat/${chat.id}`)}
-                title={safeName}
-                style={{ 
-                  flex: 1, 
-                  textAlign: 'left', 
-                  background: 'none', 
-                  border: 'none', 
-                  cursor: 'pointer',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}
-              >
-                {displayName}
-                {localStorage.getItem(`key_${chat.id}`) && <span style={{ color: 'green', marginLeft: '6px' }}>🔒</span>}
-              </button>
+              {isEditing ? (
+                <input
+                  ref={editInputRef}
+                  type="text"
+                  value={editNameInput}
+                  onChange={(e) => setEditNameInput(e.target.value)}
+                  onKeyDown={(e) => handleKeyDown(e, chat.id)}
+                  onBlur={() => saveEdit(chat.id)}
+                  style={{
+                    flex: 1,
+                    padding: '4px 8px',
+                    border: '1px solid #007bff',
+                    borderRadius: '4px',
+                    outline: 'none'
+                  }}
+                />
+              ) : (
+                <button
+                  onClick={() => navigate(`/chat/${chat.id}`)}
+                  title={safeName}
+                  style={{ 
+                    flex: 1, 
+                    textAlign: 'left', 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {displayName}
+                  {localStorage.getItem(`key_${chat.id}`) && <span style={{ color: 'green', marginLeft: '6px' }}>🔒</span>}
+                </button>
+              )}
 
-              <button
-                onClick={() => removeChat(chat.id)}
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  color: '#dc3545', 
-                  cursor: 'pointer', 
-                  fontSize: '1.3em',
-                  padding: '4px'
-                }}
-                title="Remove chat"
-              >
-                🗑
-              </button>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {!isEditing && (
+                  <button
+                    onClick={() => startEdit(chat)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#007bff',
+                      cursor: 'pointer',
+                      fontSize: '1.2em',
+                      padding: '4px'
+                    }}
+                    title="Rename chat"
+                  >
+                    ✏️
+                  </button>
+                )}
+
+                {isEditing && (
+                  <button
+                    onClick={() => saveEdit(chat.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#28a745',
+                      cursor: 'pointer',
+                      fontSize: '1.2em',
+                      padding: '4px'
+                    }}
+                    title="Save"
+                  >
+                    ✓
+                  </button>
+                )}
+
+                <button
+                  onClick={() => removeChat(chat.id)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#dc3545',
+                    cursor: 'pointer',
+                    fontSize: '1.3em',
+                    padding: '4px'
+                  }}
+                  title="Remove chat"
+                >
+                  🗑
+                </button>
+              </div>
             </li>
           );
         })}
