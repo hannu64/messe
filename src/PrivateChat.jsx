@@ -29,6 +29,21 @@ const importKey = async (base64Key) => {
   }
 };
 
+
+const generateAndSetRandomKey = async () => {
+  const base64Key = await generateKey();  // your existing generateKey function
+  const imported = await importKey(base64Key);
+  if (imported) {
+    setCryptoKey(imported);
+    setKeyStatus('shared');
+    setSharedKeyInput(base64Key);  // show in paste field too
+    localStorage.setItem(`key_${chatId}`, base64Key);
+    await navigator.clipboard.writeText(base64Key);
+    alert('New random key generated and copied to clipboard!\nShare this securely with your friend.');
+  }
+};
+
+
 function PrivateChat() {
   const { chatId } = useParams();
   const [messages, setMessages] = useState([]);
@@ -423,26 +438,36 @@ const formatMessageTime = (timestamp) => {
           </div>
         )}
 
+
+
         {keyStatus === 'derived' && (
           <div style={{ margin: '12px 0' }}>
             <p style={{ margin: '0 0 8px 0', fontWeight: 'bold' }}>
-              Want to start a secure chat with someone?
+              Quick test mode (demo key derived from chat ID)
             </p>
+            <button
+              onClick={generateAndSetRandomKey}
+              style={{ padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', borderRadius: '6px', marginRight: '12px' }}
+            >
+              Generate real random key
+            </button>
             <button
               onClick={copyKey}
               disabled={!cryptoKey}
               style={{ padding: '10px 20px', background: '#007bff', color: 'white', border: 'none', borderRadius: '6px' }}
             >
-              Copy demo key to share (testing only)
+              Copy demo key (testing only)
             </button>
           </div>
         )}
 
         {keyStatus === 'shared' && (
           <small style={{ color: '#28a745', fontWeight: 'bold', display: 'block', margin: '12px 0' }}>
-            ✓ Using shared secret key — messages are end-to-end encrypted
+            ✓ Using secure random/shared key — messages are end-to-end encrypted
           </small>
         )}
+
+
 
         <button onClick={clearKey} style={{ padding: '8px 16px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
           Clear key / Back to demo
