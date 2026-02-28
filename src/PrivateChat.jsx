@@ -86,6 +86,29 @@ function PrivateChat() {
     })();
   }, [chatId]);
 
+
+
+  const formatMessageTime = (timestamp) => {
+    if (!timestamp) return '';
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+
+    if (isToday) {
+      // Only time for today's messages
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    } else {
+      // Date + time for older messages
+      // Format: 27.2. 14:35 (European style) — change if you prefer another
+      const dayMonth = date.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'numeric' });
+      const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+      return `${dayMonth} ${time}`;
+    }
+  };
+  
+
+
   // Decrypt all messages when messages or key change
   useEffect(() => {
     if (!cryptoKey) return;
@@ -443,14 +466,17 @@ function PrivateChat() {
             }}
           >
             {msg.text}
-            <div style={{
-              fontSize: '0.75em',
-              opacity: 0.7,
-              marginTop: '4px',
-              textAlign: msg.sender === 'me' ? 'right' : 'left'
-            }}>
-              {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </div>
+
+
+          <div style={{
+            fontSize: '0.75em',
+            opacity: 0.7,
+            marginTop: '4px',
+            textAlign: msg.sender === 'me' ? 'right' : 'left'
+          }}>
+            {formatMessageTime(msg.serverTimestamp || msg.timestamp || Date.now())}
+          </div>
+
           </div>
         ))}
         <div ref={messagesEndRef} />
