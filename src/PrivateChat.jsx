@@ -95,16 +95,24 @@ function PrivateChat() {
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
 
+    const timeStr = date.toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+
     if (isToday) {
-      // Only time for today's messages
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-    } else {
-      // Date + time for older messages
-      // Format: 27.2. 14:35 (European style) — change if you prefer another
-      const dayMonth = date.toLocaleDateString([], { weekday: 'short', day: 'numeric', month: 'numeric' });
-      const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-      return `${dayMonth} ${time}`;
+      return timeStr;                        // → "16:00"
     }
+
+    // European style: weekday short + DD.MM
+    const datePart = date.toLocaleDateString('fi-FI', {   // or 'de-DE', 'sv-SE' etc. — fi-FI gives good dot separator
+      weekday: 'short',
+      day: '2-digit',
+      month: '2-digit'
+    }).replace(/\//g, '.');  // make sure dots instead of slashes
+
+    return `${datePart} ${timeStr}`;         // → "Pe, 27.02 16:00" or "Fri, 27.02 16:00"
   };
   
 
