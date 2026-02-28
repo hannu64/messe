@@ -20,15 +20,13 @@ function Sidebar() {
         localStorage.setItem('chats', JSON.stringify(validChats));
       }
 
-      // Enrich with last message preview
+      // Enrich with simple last-message preview (sender-based)
       const enriched = validChats.map(chat => {
         const msgs = JSON.parse(localStorage.getItem(`messages_${chat.id}`)) || [];
-        const lastMsg = msgs[msgs.length - 1];
-        let preview = '';
-        if (lastMsg) {
-          // We'll decrypt later if needed; for now use raw encrypted or skip
-          // Simplest: show nothing meaningful yet, or placeholder
-          preview = '…'; // placeholder until we add decryption here
+        let preview = 'No messages yet';
+        if (msgs.length > 0) {
+          const lastSender = msgs[msgs.length - 1].sender;
+          preview = lastSender === 'me' ? 'You sent a message' : 'Friend replied';
         }
         return { ...chat, preview };
       });
@@ -233,7 +231,7 @@ function Sidebar() {
                 </div>
               </div>
 
-              {/* Last message preview */}
+              {/* Simple sender-based preview */}
               <div style={{
                 fontSize: '0.85em',
                 color: '#666',
@@ -243,7 +241,7 @@ function Sidebar() {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
               }}>
-                {chat.preview || 'No messages yet'}
+                {chat.preview}
               </div>
             </li>
           );
