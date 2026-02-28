@@ -30,18 +30,7 @@ const importKey = async (base64Key) => {
 };
 
 
-const generateAndSetRandomKey = async () => {
-  const base64Key = await generateKey();  // your existing generateKey function
-  const imported = await importKey(base64Key);
-  if (imported) {
-    setCryptoKey(imported);
-    setKeyStatus('shared');
-    setSharedKeyInput(base64Key);  // show in paste field too
-    localStorage.setItem(`key_${chatId}`, base64Key);
-    await navigator.clipboard.writeText(base64Key);
-    alert('New random key generated and copied to clipboard!\nShare this securely with your friend.');
-  }
-};
+
 
 
 function PrivateChat() {
@@ -55,6 +44,21 @@ function PrivateChat() {
   const [showNamePrompt, setShowNamePrompt] = useState(false);
   const [chatNameInput, setChatNameInput] = useState('');
   const messagesEndRef = useRef(null);
+
+
+  const generateAndSetRandomKey = async () => {
+    const base64Key = await generateKey();  // your existing generateKey function
+    const imported = await importKey(base64Key);
+    if (imported) {
+      setCryptoKey(imported);
+      setKeyStatus('shared');
+      setSharedKeyInput(base64Key);  // show in paste field too
+      localStorage.setItem(`key_${chatId}`, base64Key);
+      await navigator.clipboard.writeText(base64Key);
+      alert('New random key generated and copied to clipboard!\nShare this securely with your friend.');
+    }
+  };
+
 
   // Load messages from localStorage
   useEffect(() => {
