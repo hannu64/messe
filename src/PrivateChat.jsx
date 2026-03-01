@@ -324,17 +324,27 @@ function PrivateChat() {
   };
 
   // Strength helpers
-  const getStrengthColor = (pass) => {
-    if (pass.length < 8) return '#dc3545';
-    if (pass.length < 12) return '#fd7e14';
-    if (pass.length >= 16) return '#28a745';
-    return '#ffc107';
-  };
+const getStrengthColor = (pass) => {
+  if (pass.length < 12) return '#dc3545';     // red
+  if (pass.length < 16) return '#fd7e14';     // orange
+  if (pass.length < 20) return '#ffc107';     // yellow
+  return '#28a745';                           // green
+};
 
-  const getStrengthWidth = (pass) => {
-    const len = Math.min(pass.length, 30);
-    return `${(len / 30) * 100}%`;
-  };
+
+const getStrengthWidth = (pass) => {
+  const len = Math.min(pass.length, 30); // cap visual at 30 chars
+  return `${(len / 30) * 100}%`;
+};
+
+const getStrengthLabel = (pass) => {
+  if (pass.length < 12) return `Too short (${pass.length}/12)`;
+  if (pass.length < 16) return 'Medium';
+  if (pass.length < 20) return 'Strong';
+  return 'Very strong ✓';
+};
+
+
 
   const sendMessage = async () => {
     if (!newMessage.trim() || !cryptoKey) return;
@@ -537,130 +547,133 @@ function PrivateChat() {
           </small>
         </div>
 
-        {showPassphraseInput && (
+
+{showPassphraseInput && (
+  <div style={{
+    marginTop: '16px',
+    padding: '16px',
+    background: '#e7f3ff',
+    borderRadius: '8px',
+    border: '1px solid #b3d4fc'
+  }}>
+    <strong>Enter shared passphrase</strong><br />
+    <small style={{ color: '#555', lineHeight: '1.5' }}>
+      Both you and your friend must type the <strong>exact same passphrase</strong> (minimum 12 characters).<br />
+      Agree on it outside this chat (phone, in person, secure message — never type it here!).
+    </small>
+
+    <div style={{ position: 'relative', margin: '16px 0' }}>
+      <input
+        type={showPassphrase ? 'text' : 'password'}
+        value={passphrase}
+        onChange={(e) => {
+          setPassphrase(e.target.value);
+          setPassphraseError('');
+        }}
+        placeholder="Your shared passphrase (min 12 chars)"
+        style={{
+          width: '100%',
+          padding: '10px 40px 10px 12px',
+          border: '1px solid #ccc',
+          borderRadius: '6px',
+          fontFamily: 'monospace',
+          boxSizing: 'border-box'
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            deriveKeyFromPassphrase(passphrase);
+          }
+        }}
+      />
+
+      <button
+        type="button"
+        onClick={() => setShowPassphrase(!showPassphrase)}
+        style={{
+          position: 'absolute',
+          right: '10px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          background: 'none',
+          border: 'none',
+          fontSize: '1.2em',
+          cursor: 'pointer',
+          color: '#555'
+        }}
+        title={showPassphrase ? 'Hide passphrase' : 'Show passphrase'}
+      >
+        {showPassphrase ? '🙈' : '👁️'}
+      </button>
+    </div>
+
+    {/* Strength meter + label */}
+    <div style={{ marginBottom: '12px' }}>
+      {passphrase.length > 0 && (
+        <>
           <div style={{
-            marginTop: '16px',
-            padding: '16px',
-            background: '#e7f3ff',
-            borderRadius: '8px',
-            border: '1px solid #b3d4fc'
+            height: '8px',
+            background: getStrengthColor(passphrase),
+            borderRadius: '4px',
+            width: getStrengthWidth(passphrase),
+            transition: 'width 0.3s, background 0.3s',
+            marginBottom: '6px'
+          }} />
+          <small style={{ 
+            fontWeight: 'bold',
+            color: getStrengthColor(passphrase)
           }}>
-            <strong>Enter shared passphrase</strong><br />
-            <small style={{ color: '#555', lineHeight: '1.5' }}>
-              Both you and your friend must type the <strong>exact same passphrase</strong> (minimum 12 characters).<br />
-              Agree on it outside this chat (phone, in person, secure message — never type it here!).
-            </small>
+            {getStrengthLabel(passphrase)}
+          </small>
+        </>
+      )}
+    </div>
 
-            <div style={{ position: 'relative', margin: '16px 0' }}>
-              <input
-                type={showPassphrase ? 'text' : 'password'}
-                value={passphrase}
-                onChange={(e) => {
-                  setPassphrase(e.target.value);
-                  setPassphraseError('');
-                }}
-                placeholder="Your shared passphrase (min 12 chars)"
-                style={{
-                  width: '100%',
-                  padding: '10px 40px 10px 12px',
-                  border: '1px solid #ccc',
-                  borderRadius: '6px',
-                  fontFamily: 'monospace',
-                  boxSizing: 'border-box'
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    deriveKeyFromPassphrase(passphrase);
-                  }
-                }}
-              />
+    {passphraseError && (
+      <div style={{ color: '#dc3545', marginBottom: '12px' }}>
+        {passphraseError}
+      </div>
+    )}
 
-              <button
-                type="button"
-                onClick={() => setShowPassphrase(!showPassphrase)}
-                style={{
-                  position: 'absolute',
-                  right: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '1.2em',
-                  cursor: 'pointer',
-                  color: '#555'
-                }}
-                title={showPassphrase ? 'Hide passphrase' : 'Show passphrase'}
-              >
-                {showPassphrase ? '🙈' : '👁️'}
-              </button>
-            </div>
+    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+      <button
+        onClick={() => {
+          setShowPassphraseInput(false);
+          setPassphrase('');
+          setPassphraseError('');
+          setShowPassphrase(false);
+        }}
+        style={{
+          padding: '10px 20px',
+          background: '#6c757d',
+          color: 'white',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer'
+        }}
+      >
+        Cancel
+      </button>
+      <button
+        onClick={() => deriveKeyFromPassphrase(passphrase)}
+        disabled={passphrase.length < 12}
+        style={{
+          padding: '10px 20px',
+          background: passphrase.length >= 12 ? '#007bff' : '#ccc',
+          color: 'white',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: passphrase.length >= 12 ? 'pointer' : 'not-allowed',
+          fontWeight: 'bold'
+        }}
+      >
+        Use this passphrase
+      </button>
+    </div>
+  </div>
+)}
 
-            <div style={{ marginBottom: '12px' }}>
-              {passphrase.length > 0 && (
-                <div style={{
-                  height: '6px',
-                  background: getStrengthColor(passphrase),
-                  borderRadius: '3px',
-                  width: getStrengthWidth(passphrase),
-                  transition: 'width 0.3s, background 0.3s'
-                }} />
-              )}
-              <small style={{ 
-                color: passphrase.length >= 12 ? '#28a745' : '#dc3545',
-                fontWeight: passphrase.length >= 12 ? 'bold' : 'normal'
-              }}>
-                {passphrase.length === 0 
-                  ? 'Enter at least 12 characters' 
-                  : passphrase.length < 12 
-                    ? `Too short (${passphrase.length}/12)` 
-                    : 'Good length ✓'}
-              </small>
-            </div>
 
-            {passphraseError && (
-              <div style={{ color: '#dc3545', marginBottom: '12px' }}>
-                {passphraseError}
-              </div>
-            )}
-
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => {
-                  setShowPassphraseInput(false);
-                  setPassphrase('');
-                  setPassphraseError('');
-                  setShowPassphrase(false);
-                }}
-                style={{
-                  padding: '10px 20px',
-                  background: '#6c757d',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => deriveKeyFromPassphrase(passphrase)}
-                disabled={passphrase.length < 12}
-                style={{
-                  padding: '10px 20px',
-                  background: passphrase.length >= 12 ? '#007bff' : '#ccc',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: passphrase.length >= 12 ? 'pointer' : 'not-allowed',
-                  fontWeight: 'bold'
-                }}
-              >
-                Use this passphrase
-              </button>
-            </div>
-          </div>
-        )}
 
         <button onClick={simulateIncoming} disabled={!cryptoKey} style={{ marginTop: '12px', padding: '8px 16px', background: '#28a745', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
           Simulate incoming message (test decrypt)
