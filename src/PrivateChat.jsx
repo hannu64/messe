@@ -323,26 +323,27 @@ function PrivateChat() {
     }
   };
 
-  // Strength helpers
-const getStrengthColor = (pass) => {
-  if (pass.length < 12) return '#dc3545';     // red
-  if (pass.length < 16) return '#fd7e14';     // orange
-  if (pass.length < 20) return '#ffc107';     // yellow
-  return '#28a745';                           // green
-};
+
+      // Strength helpers
+    const getStrengthColor = (pass) => {
+      if (pass.length < 12) return '#dc3545';     // red
+      if (pass.length < 16) return '#fd7e14';     // orange
+      if (pass.length < 20) return '#ffc107';     // yellow
+      return '#28a745';                           // green
+    };
 
 
-const getStrengthWidth = (pass) => {
-  const len = Math.min(pass.length, 30); // cap visual at 30 chars
-  return `${(len / 30) * 100}%`;
-};
+    const getStrengthWidth = (pass) => {
+      const len = Math.min(pass.length, 30); // cap visual at 30 chars
+      return `${(len / 30) * 100}%`;
+    };
 
-const getStrengthLabel = (pass) => {
-  if (pass.length < 12) return `Too short (${pass.length}/12)`;
-  if (pass.length < 16) return 'Medium';
-  if (pass.length < 20) return 'Strong';
-  return 'Very strong ✓';
-};
+    const getStrengthLabel = (pass) => {
+      if (pass.length < 12) return `Too short (${pass.length}/12)`;
+      if (pass.length < 16) return 'Medium';
+      if (pass.length < 20) return 'Strong';
+      return 'Very strong ✓';
+    };
 
 
 
