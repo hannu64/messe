@@ -53,6 +53,42 @@ function PrivateChat() {
   const [showPassphrase, setShowPassphrase] = useState(false); // visibility toggle
   const messagesEndRef = useRef(null);
 
+
+  const formatMessageTime = (timestamp) => {
+  if (!timestamp) return '';
+
+  const date = new Date(timestamp);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+
+  const timeStr = date.toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+
+  if (isToday) {
+    return timeStr;  // "16:00"
+  }
+
+  // European DD.MM with short weekday
+  let datePart = date.toLocaleDateString('fi-FI', {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit'
+  });
+
+  // Add year if older than 7 days
+  const diffTime = Math.abs(now - date);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  if (diffDays > 7) {
+    datePart += `.${date.getFullYear()}`;
+  }
+
+  return `${datePart} ${timeStr}`;  // e.g. "Pe 27.02 16:00" or "Pe 27.02.2026 16:00"
+  };
+
+
   // Load messages
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem(`messages_${chatId}`)) || [];
@@ -647,14 +683,18 @@ function PrivateChat() {
             }}
           >
             {msg.text}
-            <div style={{
-              fontSize: '0.75em',
-              opacity: 0.7,
-              marginTop: '4px',
-              textAlign: msg.sender === 'me' ? 'right' : 'left'
-            }}>
-              {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </div>
+
+
+          <div style={{
+            fontSize: '0.75em',
+            opacity: 0.7,
+            marginTop: '4px',
+            textAlign: msg.sender === 'me' ? 'right' : 'left'
+          }}>
+            {formatMessageTime(msg.serverTimestamp || msg.timestamp || Date.now())}
+          </div>
+
+
           </div>
         ))}
         <div ref={messagesEndRef} />
